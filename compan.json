@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "compan": {
+    "project": "Compan",
+    "platforms": ["android"],
+    "androidProduct": "Compandroid",
+    "protocolVersion": 1
+  },
+  "repository": {
+    "owner": "KenanPC",
+    "name": "compan",
+    "url": "https://github.com/KenanPC/compan"
+  },
+  "compandroid": {
+    "sdkModule": ":compandroid-sdk",
+    "artifactId": "compandroid-sdk",
+    "currentVersion": "0.1.0",
+    "templatePath": "templates/android",
+    "adoptionGuide": "QUICKSTART.md"
+  },
+  "agentGuidance": {
+    "canonicalDocs": ["COMPAN.md", "QUICKSTART.md", "docs/android-adoption.md"],
+    "targetRepoProtocolFiles": ["compan.json", "COMPAN.md", "AGENTS.md", "CLAUDE.md"]
+  }
+}

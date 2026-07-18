@@ -3,7 +3,9 @@
   "compan": {
     "platform": "android",
     "product": "Compandroid",
-    "protocolVersion": 1
+    "protocolVersion": 1,
+    "sdkVersion": "0.1.0",
+    "updateSource": "https://github.com/KenanPC/compan/releases"
   },
   "app": {
     "name": "Example Android App",
@@ -22,4 +24,3 @@
     "repoWrites": "developer-or-llm-agent-only"
   }
 }
-

@@ -8,17 +8,18 @@ development app pulls those artifacts with read-only GitHub access.
 
 ## Rules For Humans And Agents
 
-Before changing Android build, update, signing, package identity, or GitHub
-Actions behavior:
+Before changing Android build, update, signing, package identity, GitHub
+Actions behavior, or Compandroid adoption instructions:
 
 1. Read `compan.json`.
-2. Preserve the configured package name unless the user explicitly approves a
+2. Read `QUICKSTART.md`.
+3. Preserve the configured package name unless the user explicitly approves a
    migration.
-3. Keep APK updates installable by using the same signing lineage and increasing
+4. Keep APK updates installable by using the same signing lineage and increasing
    `versionCode`.
-4. Keep the GitHub Actions artifact name aligned with `compan.json`.
-5. Do not require write GitHub permissions from the installed app.
-6. Treat the installed app as read-only against GitHub: it may read workflow
+5. Keep the GitHub Actions artifact name aligned with `compan.json`.
+6. Do not require write GitHub permissions from the installed app.
+7. Treat the installed app as read-only against GitHub: it may read workflow
    runs and artifacts, but repo writes belong to the developer or LLM agent.
 
 ## Runtime Update Limits
@@ -39,4 +40,3 @@ For private repos, Compandroid should use read-only GitHub access:
 - Actions: read
 
 Write permissions are intentionally out of scope for the installed app.
-

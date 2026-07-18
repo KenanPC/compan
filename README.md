@@ -1,11 +1,15 @@
-# Compandroid
+# Compan
 
-Compandroid is the Android member of the Compan developer companion family.
+Compan is a developer companion framework for mobile apps.
 
-It is repo-integrated scaffolding for Android apps: developers add the
-Compandroid SDK to their own private GitHub repo, GitHub Actions builds APKs
-from that repo, and the installed development app can pull newer APK builds
-from GitHub Actions with explicit user approval.
+Its first platform implementation is **Compandroid**, repo-integrated
+scaffolding for Android apps. Developers add the Compandroid SDK to their own
+private GitHub repo, GitHub Actions builds APKs from that repo, and the
+installed development app can pull newer APK builds from GitHub Actions with
+explicit user approval.
+
+Start with [QUICKSTART.md](QUICKSTART.md) to add Compandroid to an Android app
+repo.
 
 ## Product Shape
 
@@ -25,3 +29,9 @@ from GitHub Actions with explicit user approval.
 
 See `templates/android` for files that should be copied into a user app repo.
 
+## For Coding Agents
+
+This repo is designed to be legible to mainstream coding agents. Agents should
+read `COMPAN.md`, `QUICKSTART.md`, and `compan.json` in target app repos before
+changing Android build, signing, package identity, GitHub Actions, or APK update
+behavior.
