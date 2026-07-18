@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "compan": {
+    "platform": "android",
+    "product": "Compandroid",
+    "protocolVersion": 1
+  },
+  "app": {
+    "name": "Example Android App",
+    "packageName": "com.example.app.dev",
+    "module": ":app",
+    "buildVariant": "debug",
+    "versionCodePolicy": "must-increase-for-apk-updates"
+  },
+  "github": {
+    "branch": "compan-android",
+    "workflow": ".github/workflows/compan-android-apk.yml",
+    "artifactName": "compan-android-debug-apk"
+  },
+  "permissions": {
+    "installedAppGithubAccess": ["metadata:read", "contents:read", "actions:read"],
+    "repoWrites": "developer-or-llm-agent-only"
+  }
+}
+
