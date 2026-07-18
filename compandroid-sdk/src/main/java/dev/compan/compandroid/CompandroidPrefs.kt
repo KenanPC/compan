@@ -30,6 +30,10 @@ internal class CompandroidPrefs(context: Context) {
         get() = prefs.getString("workflowFileName", null) ?: bundledConfig.workflowFileName
         set(value) = prefs.edit().putString("workflowFileName", value).apply()
 
+    var hideLaunchNotice: Boolean
+        get() = prefs.getBoolean("hideLaunchNotice", false)
+        set(value) = prefs.edit().putBoolean("hideLaunchNotice", value).apply()
+
     fun clearToken() {
         prefs.edit().remove("token").apply()
     }

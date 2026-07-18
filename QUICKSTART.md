@@ -131,12 +131,19 @@ After GitHub Actions produces a successful APK artifact:
 
 1. Open the development app.
 2. Shake the device.
-3. Enter the GitHub owner, repo, branch, artifact name, and read token.
-4. Tap **Pull Latest APK**.
-5. Android will show the system install/update confirmation UI.
-6. Confirm the install.
+3. Scan a QR code containing a read-only GitHub token, or paste the token as a
+   fallback.
+4. Choose or confirm the GitHub owner, repo, branch, workflow, and artifact
+   name.
+5. Tap **Pull Latest APK**.
+6. Android will show the system install/update confirmation UI.
+7. Confirm the install.
 
 Compandroid cannot silently install APKs.
+
+The recommended token is a fine-grained personal access token scoped to the app
+repo with Metadata, Contents, and Actions read access. Do not bundle this token
+into the APK.
 
 ## 8. Keep Updates Installable
 
