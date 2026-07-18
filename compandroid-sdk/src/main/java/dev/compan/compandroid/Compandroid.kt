@@ -8,12 +8,13 @@ import android.hardware.SensorManager
 object Compandroid {
     private var shakeDetector: ShakeDetector? = null
 
-    fun install(activity: Activity) {
+    fun install(activity: Activity): Boolean {
         val sensorManager = activity.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         shakeDetector?.stop()
         shakeDetector = ShakeDetector(sensorManager) {
             activity.startActivity(Intent(activity, CompandroidSettingsActivity::class.java))
-        }.also { it.start() }
+        }
+        return shakeDetector?.start() == true
     }
 
     fun uninstall() {
@@ -21,4 +22,3 @@ object Compandroid {
         shakeDetector = null
     }
 }
-

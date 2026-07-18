@@ -22,6 +22,7 @@ class CompandroidSettingsActivity : Activity() {
         val owner = field("Owner", prefs.owner)
         val repo = field("Repo", prefs.repo)
         val branch = field("Branch", prefs.branch)
+        val workflow = field("Workflow file", prefs.workflowFileName)
         val artifact = field("Artifact", prefs.artifactName)
         val token = field("GitHub read token", prefs.token)
         status = TextView(this).apply {
@@ -36,6 +37,7 @@ class CompandroidSettingsActivity : Activity() {
                 prefs.owner = owner.text.toString().trim()
                 prefs.repo = repo.text.toString().trim()
                 prefs.branch = branch.text.toString().trim()
+                prefs.workflowFileName = workflow.text.toString().trim()
                 prefs.artifactName = artifact.text.toString().trim()
                 prefs.token = token.text.toString().trim()
                 status.text = "Settings saved"
@@ -50,6 +52,23 @@ class CompandroidSettingsActivity : Activity() {
             }
         }
 
+        val test = Button(this).apply {
+            text = "Test GitHub Connection"
+            setOnClickListener {
+                save.performClick()
+                testConnection()
+            }
+        }
+
+        val clearToken = Button(this).apply {
+            text = "Clear Token"
+            setOnClickListener {
+                prefs.clearToken()
+                token.setText("")
+                status.text = "Token cleared"
+            }
+        }
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)
@@ -57,10 +76,13 @@ class CompandroidSettingsActivity : Activity() {
             addView(owner)
             addView(repo)
             addView(branch)
+            addView(workflow)
             addView(artifact)
             addView(token)
             addView(save)
+            addView(test)
             addView(pull)
+            addView(clearToken)
             addView(status)
         }
 
@@ -82,11 +104,33 @@ class CompandroidSettingsActivity : Activity() {
                 val validation = ApkValidator.validateUpdate(this, apk, config.packageName)
                 require(validation.ok) { validation.message }
                 runOnUiThread {
-                    status.text = "${validation.message}. Installing ${artifact.headSha.take(7)}"
-                    ApkInstaller.install(this, apk)
+                    val install = ApkInstaller.install(this, apk)
+                    status.text = "${validation.message}. ${install.message} ${artifact.headSha.take(7)}"
                 }
             }.onFailure { error ->
                 runOnUiThread { status.text = error.message ?: "Pull failed" }
+            }
+        }
+    }
+
+    private fun testConnection() {
+        status.text = "Testing GitHub access..."
+        thread {
+            runCatching {
+                val config = prefs.config(packageName)
+                require(config.owner.isNotBlank() && config.repo.isNotBlank()) {
+                    "Owner and repo are required"
+                }
+                val artifact = GitHubActionsClient(prefs.token).latestSuccessfulArtifact(config)
+                runOnUiThread {
+                    status.text = if (artifact == null) {
+                        "GitHub access works, but no matching APK artifact was found."
+                    } else {
+                        "GitHub access works. Latest artifact: ${artifact.name} from ${artifact.headSha.take(7)}"
+                    }
+                }
+            }.onFailure { error ->
+                runOnUiThread { status.text = error.message ?: "Connection test failed" }
             }
         }
     }

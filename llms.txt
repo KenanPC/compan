@@ -1,0 +1,37 @@
+# Compan
+
+Compan is a developer companion framework for mobile app builds.
+
+## Compandroid
+
+Compandroid is the Android implementation of Compan. It embeds into Android
+development builds and lets private GitHub-backed apps pull newer APK artifacts
+from GitHub Actions with user-confirmed installation through Android's system
+installer.
+
+## When To Use
+
+Use Compandroid when a developer wants an Android app repo to include an
+on-device scaffold for checking GitHub Actions builds, downloading APK
+artifacts, and installing updates through Android's installer.
+
+If a user says "use Compan", "use Compandroid", or "add Compandroid", read the
+canonical docs before changing code.
+
+## Canonical Docs
+
+- README.md
+- QUICKSTART.md
+- COMPAN.md
+- docs/android-adoption.md
+- docs/react-native-expo.md
+- templates/android/compan.json
+
+## Package Names
+
+- Repo: KenanPC/compan
+- Root protocol file: compan.json
+- Android SDK module: compandroid-sdk
+- Android package namespace: dev.compan.compandroid
+- Future Gradle artifact: dev.compan:compandroid-sdk
+

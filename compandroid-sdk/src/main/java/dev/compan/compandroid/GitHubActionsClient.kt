@@ -9,23 +9,33 @@ import java.util.zip.ZipInputStream
 
 internal class GitHubActionsClient(private val token: String) {
     fun latestSuccessfulArtifact(config: CompandroidConfig): GitHubArtifact? {
-        val runsUrl = "https://api.github.com/repos/${config.owner}/${config.repo}/actions/runs" +
-            "?branch=${config.branch}&status=success&per_page=10"
-        val runs = getJson(runsUrl).getJSONArray("workflow_runs")
+        for (page in 1..3) {
+            val runsUrl = "https://api.github.com/repos/${config.owner}/${config.repo}/actions/runs" +
+                "?branch=${config.branch}&status=success&per_page=25&page=$page"
+            val runs = getJson(runsUrl).getJSONArray("workflow_runs")
 
-        for (index in 0 until runs.length()) {
-            val run = runs.getJSONObject(index)
-            val artifactsUrl = run.getString("artifacts_url")
-            val artifacts = getJson(artifactsUrl).getJSONArray("artifacts")
-            for (artifactIndex in 0 until artifacts.length()) {
-                val artifact = artifacts.getJSONObject(artifactIndex)
-                if (!artifact.getBoolean("expired") && artifact.getString("name") == config.artifactName) {
-                    return GitHubArtifact(
-                        name = artifact.getString("name"),
-                        downloadUrl = artifact.getString("archive_download_url"),
-                        workflowRunId = run.getLong("id"),
-                        headSha = run.getString("head_sha")
-                    )
+            for (index in 0 until runs.length()) {
+                val run = runs.getJSONObject(index)
+                val workflowPath = run.optString("path")
+                if (workflowPath.isNotBlank() && !workflowPath.endsWith(config.workflowFileName)) {
+                    continue
+                }
+
+                val artifactsUrl = run.getString("artifacts_url")
+                for (artifactPage in 1..3) {
+                    val artifacts = getJson("$artifactsUrl?per_page=100&page=$artifactPage")
+                        .getJSONArray("artifacts")
+                    for (artifactIndex in 0 until artifacts.length()) {
+                        val artifact = artifacts.getJSONObject(artifactIndex)
+                        if (!artifact.getBoolean("expired") && artifact.getString("name") == config.artifactName) {
+                            return GitHubArtifact(
+                                name = artifact.getString("name"),
+                                downloadUrl = artifact.getString("archive_download_url"),
+                                workflowRunId = run.getLong("id"),
+                                headSha = run.getString("head_sha")
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -59,16 +69,33 @@ internal class GitHubActionsClient(private val token: String) {
 
     private fun openConnection(url: String): HttpURLConnection {
         val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 30_000
         connection.setRequestProperty("Accept", "application/vnd.github+json")
         connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
         if (token.isNotBlank()) {
             connection.setRequestProperty("Authorization", "Bearer $token")
         }
         if (connection.responseCode !in 200..299) {
-            val body = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            error("GitHub request failed: HTTP ${connection.responseCode} $body")
+            throw GitHubApiException(connection.errorMessage())
         }
         return connection
     }
-}
 
+    private fun HttpURLConnection.errorMessage(): String {
+        val body = errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        val remaining = getHeaderField("X-RateLimit-Remaining")
+        val reset = getHeaderField("X-RateLimit-Reset")
+
+        return when (responseCode) {
+            401 -> "GitHub token was rejected. Check that the token is valid and has read access."
+            403 -> if (remaining == "0") {
+                "GitHub rate limit exceeded. Try again after reset time $reset."
+            } else {
+                "GitHub access was forbidden. For private repos, use a token with Metadata, Contents, and Actions read access."
+            }
+            404 -> "GitHub repo, branch, workflow, or artifact was not found. Check owner/repo, branch, and private repo access."
+            else -> "GitHub request failed: HTTP $responseCode $body"
+        }
+    }
+}

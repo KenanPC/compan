@@ -29,9 +29,14 @@ repo.
 
 See `templates/android` for files that should be copied into a user app repo.
 
+## Status
+
+Compandroid is in early preview. See [ROADMAP.md](ROADMAP.md) for what remains
+before a packaged SDK release.
+
 ## For Coding Agents
 
 This repo is designed to be legible to mainstream coding agents. Agents should
-read `COMPAN.md`, `QUICKSTART.md`, and `compan.json` in target app repos before
-changing Android build, signing, package identity, GitHub Actions, or APK update
-behavior.
+read `llms.txt`, `COMPAN.md`, `QUICKSTART.md`, and `compan.json` in target app
+repos before changing Android build, signing, package identity, GitHub Actions,
+or APK update behavior.

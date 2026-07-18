@@ -19,7 +19,14 @@
     "adoptionGuide": "QUICKSTART.md"
   },
   "agentGuidance": {
-    "canonicalDocs": ["COMPAN.md", "QUICKSTART.md", "docs/android-adoption.md"],
+    "canonicalDocs": [
+      "llms.txt",
+      "COMPAN.md",
+      "QUICKSTART.md",
+      "docs/android-adoption.md",
+      "docs/react-native-expo.md",
+      "ROADMAP.md"
+    ],
     "targetRepoProtocolFiles": ["compan.json", "COMPAN.md", "AGENTS.md", "CLAUDE.md"]
   }
 }

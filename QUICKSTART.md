@@ -9,19 +9,27 @@ user approval.
 
 ## 1. Add Compandroid To The App
 
-In the app module's Gradle file, add Compandroid only to development builds:
+No packaged SDK has been published yet. For now, vendor this repo or add it as a
+source dependency, then include the SDK module only in development builds:
+
+```kotlin
+// settings.gradle.kts
+include(":compandroid-sdk")
+project(":compandroid-sdk").projectDir = file("vendor/compan/compandroid-sdk")
+```
+
+```kotlin
+// app/build.gradle.kts
+dependencies {
+    debugImplementation(project(":compandroid-sdk"))
+}
+```
+
+After a packaged release exists, prefer a versioned dependency:
 
 ```kotlin
 dependencies {
     debugImplementation("dev.compan:compandroid-sdk:0.1.0")
-}
-```
-
-During local development of Compandroid itself, use a module dependency instead:
-
-```kotlin
-dependencies {
-    debugImplementation(project(":compandroid-sdk"))
 }
 ```
 
@@ -58,6 +66,7 @@ templates/android/AGENTS.md                        -> AGENTS.md
 templates/android/CLAUDE.md                        -> CLAUDE.md
 templates/android/.github/workflows/compan-android-apk.yml
                                                    -> .github/workflows/compan-android-apk.yml
+templates/android/compan.json                      -> app/src/debug/assets/compan.json
 ```
 
 Update `compan.json` so it matches the app:
@@ -93,7 +102,19 @@ If the app uses another module or variant, update both:
 The workflow must upload an artifact whose name matches
 `github.artifactName` in `compan.json`.
 
-## 5. Private Repo Access
+## 5. Bundle Runtime Defaults
+
+Copy `compan.json` into the debug assets directory:
+
+```text
+app/src/debug/assets/compan.json
+```
+
+Compandroid reads this bundled asset at runtime to prefill owner, repo, branch,
+workflow, artifact name, and package name. The user can still override these in
+the settings panel.
+
+## 6. Private Repo Access
 
 For private repos, the installed app needs read-only GitHub access:
 
@@ -104,7 +125,7 @@ For private repos, the installed app needs read-only GitHub access:
 It does not need write access. Repo writes should be handled by the developer,
 an LLM agent, or GitHub automation outside the installed app.
 
-## 6. Pull An Update On Device
+## 7. Pull An Update On Device
 
 After GitHub Actions produces a successful APK artifact:
 
@@ -117,7 +138,7 @@ After GitHub Actions produces a successful APK artifact:
 
 Compandroid cannot silently install APKs.
 
-## 7. Keep Updates Installable
+## 8. Keep Updates Installable
 
 Every APK update must keep:
 
@@ -126,4 +147,3 @@ Every APK update must keep:
 - a higher `versionCode`
 
 If any of those change, Android may reject the update.
-

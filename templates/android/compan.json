@@ -15,6 +15,9 @@
     "versionCodePolicy": "must-increase-for-apk-updates"
   },
   "github": {
+    "repository": "owner/repo",
+    "owner": "owner",
+    "repo": "repo",
     "branch": "compan-android",
     "workflow": ".github/workflows/compan-android-apk.yml",
     "artifactName": "compan-android-debug-apk"

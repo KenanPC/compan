@@ -9,14 +9,13 @@ data class CompandroidConfig(
     val packageName: String
 ) {
     companion object {
-        fun default(): CompandroidConfig = CompandroidConfig(
+        fun default(packageName: String = ""): CompandroidConfig = CompandroidConfig(
             owner = "",
             repo = "",
             branch = "compan-android",
             workflowFileName = "compan-android-apk.yml",
             artifactName = "compan-android-debug-apk",
-            packageName = ""
+            packageName = packageName
         )
     }
 }
-

@@ -5,14 +5,21 @@ Android app repo. For the short version, see `QUICKSTART.md`.
 
 ## 1. Add The SDK
 
-Include the Compandroid SDK as a module or versioned dependency. During local
-development of this repo, use a module include:
+No packaged SDK has been published yet. Include the Compandroid SDK as a source
+module for now:
 
 ```kotlin
-implementation(project(":compandroid-sdk"))
+// settings.gradle.kts
+include(":compandroid-sdk")
+project(":compandroid-sdk").projectDir = file("vendor/compan/compandroid-sdk")
 ```
 
-Long term, prefer a versioned dependency:
+```kotlin
+// app/build.gradle.kts
+debugImplementation(project(":compandroid-sdk"))
+```
+
+Long term, prefer a versioned dependency after one is published:
 
 ```kotlin
 debugImplementation("dev.compan:compandroid-sdk:0.1.0")
@@ -71,6 +78,16 @@ CLAUDE.md
 
 `COMPAN.md` is the canonical human and LLM-readable protocol. `compan.json` is
 the machine-readable source of truth.
+
+Also copy `compan.json` into the app's debug assets:
+
+```text
+app/src/debug/assets/compan.json
+```
+
+The SDK reads this asset at runtime to prefill settings. This avoids making the
+developer type the repo, branch, workflow, artifact name, and package manually
+on every device.
 
 ## 4. Build Automation
 

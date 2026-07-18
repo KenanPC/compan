@@ -11,14 +11,20 @@ internal class ShakeDetector(
     private val onShake: () -> Unit
 ) : SensorEventListener {
     private var lastShakeAt = 0L
+    private var registered = false
 
-    fun start() {
+    fun start(): Boolean {
         val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI)
+            ?: return false
+        registered = sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI)
+        return registered
     }
 
     fun stop() {
-        sensorManager.unregisterListener(this)
+        if (registered) {
+            sensorManager.unregisterListener(this)
+            registered = false
+        }
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -36,4 +42,3 @@ internal class ShakeDetector(
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 }
-
