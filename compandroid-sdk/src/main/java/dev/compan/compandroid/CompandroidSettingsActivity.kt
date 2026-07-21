@@ -34,13 +34,15 @@ class CompandroidSettingsActivity : Activity() {
     private lateinit var artifact: TitledField
     private lateinit var apkVersion: TitledField
     private lateinit var token: TitledField
+    private lateinit var tokenSummary: TextView
+    private lateinit var tokenSetup: Button
     private lateinit var selectedRepo: TextView
     private lateinit var repositorySection: LinearLayout
     private lateinit var chooseRepo: Button
     private lateinit var githubHeader: LinearLayout
     private lateinit var githubHeaderTitle: TextView
     private lateinit var githubHeaderMeta: TextView
-    private lateinit var githubHeaderCaret: TextView
+    private lateinit var githubHeaderCaret: ImageButton
     private lateinit var githubSettingsSection: LinearLayout
     private lateinit var githubDetails: LinearLayout
     private lateinit var test: Button
@@ -50,15 +52,15 @@ class CompandroidSettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = CompandroidPrefs(this)
-        title = "Compandroid"
+        title = "CompanDROID"
 
         val hasToken = prefs.token.isNotBlank()
         token = field("Paste read-only token", prefs.token, hidden = true, cameraButton = true)
-        owner = field("Owner", if (hasToken) prefs.owner else "")
-        repo = field("Repository", if (hasToken) prefs.repo else "")
-        branch = field("Branch", if (hasToken) prefs.branch else "")
-        workflow = field("Workflow file", if (hasToken) prefs.workflowFileName else "")
-        artifact = field("APK artifact name", if (hasToken) prefs.artifactName else "")
+        owner = field("Owner", if (hasToken) prefs.owner else "", dropdownButton = true)
+        repo = field("Repository", if (hasToken) prefs.repo else "", dropdownButton = true)
+        branch = field("Branch", if (hasToken) prefs.branch else "", dropdownButton = true)
+        workflow = field("Workflow file", if (hasToken) prefs.workflowFileName else "", dropdownButton = true)
+        artifact = field("APK artifact name", if (hasToken) prefs.artifactName else "", dropdownButton = true)
         apkVersion = field("Installed APK version", installedApkVersionLabel())
         apkVersion.editText.isEnabled = false
 
@@ -73,6 +75,18 @@ class CompandroidSettingsActivity : Activity() {
             textSize = 14f
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(0, 0, 0, dp(12))
+        }
+
+        tokenSummary = TextView(this).apply {
+            textSize = 14f
+            setTextColor(Color.rgb(71, 85, 105))
+            setPadding(0, dp(6), 0, dp(12))
+        }
+
+        tokenSetup = Button(this).apply {
+            text = if (hasToken) "Change GitHub token" else "Add GitHub token"
+            stylePrimaryButton()
+            setOnClickListener { showTokenSetupDialog() }
         }
 
         chooseRepo = Button(this).apply {
@@ -108,10 +122,16 @@ class CompandroidSettingsActivity : Activity() {
             setTextColor(Color.rgb(100, 116, 139))
             setPadding(0, dp(4), 0, 0)
         }
-        githubHeaderCaret = TextView(this).apply {
-            textSize = 24f
-            setTextColor(Color.rgb(51, 65, 85))
-            setPadding(dp(16), 0, 0, 0)
+        githubHeaderCaret = ImageButton(this).apply {
+            contentDescription = "Expand GitHub settings"
+            setImageResource(android.R.drawable.arrow_down_float)
+            setBackgroundColor(Color.TRANSPARENT)
+            setColorFilter(Color.rgb(51, 65, 85))
+            setPadding(dp(14), dp(14), dp(14), dp(14))
+            setOnClickListener {
+                detailsExpanded = !detailsExpanded
+                updateGitHubSection()
+            }
         }
         githubHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -127,7 +147,7 @@ class CompandroidSettingsActivity : Activity() {
                 addView(githubHeaderTitle)
                 addView(githubHeaderMeta)
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(githubHeaderCaret)
+            addView(githubHeaderCaret, LinearLayout.LayoutParams(dp(48), dp(48)))
         }
 
         githubDetails = LinearLayout(this).apply {
@@ -160,6 +180,26 @@ class CompandroidSettingsActivity : Activity() {
         token.actionButton?.setOnClickListener {
             saveFields()
             scanTokenQr()
+        }
+        owner.actionButton?.setOnClickListener {
+            saveFields()
+            loadOwners()
+        }
+        repo.actionButton?.setOnClickListener {
+            saveFields()
+            loadRepositoriesForCurrentOwner()
+        }
+        branch.actionButton?.setOnClickListener {
+            saveFields()
+            loadBranches()
+        }
+        workflow.actionButton?.setOnClickListener {
+            saveFields()
+            loadWorkflowsForCurrentRepo()
+        }
+        artifact.actionButton?.setOnClickListener {
+            saveFields()
+            loadArtifactNames()
         }
 
         pull = Button(this).apply {
@@ -209,12 +249,6 @@ class CompandroidSettingsActivity : Activity() {
         token.editText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val value = s?.toString()?.trim().orEmpty()
-                if (value.isBlank()) {
-                    prefs.clearToken()
-                } else if (isLikelyGitHubToken(value)) {
-                    prefs.token = parseGitHubToken(value).ifBlank { value }
-                }
                 updateGitHubSection()
             }
             override fun afterTextChanged(s: Editable?) = Unit
@@ -226,7 +260,7 @@ class CompandroidSettingsActivity : Activity() {
             setPadding(dp(24), statusBarHeight() + dp(24), dp(24), dp(32))
             addView(heading())
             addView(description())
-            addView(tokenPanel())
+            addView(tokenSetupPanel())
             addView(repositorySection, matchWrapParams(top = dp(16)))
             addView(githubSettingsSection, matchWrapParams(top = dp(16)))
             addView(pull, matchWrapParams(top = dp(16)))
@@ -256,15 +290,23 @@ class CompandroidSettingsActivity : Activity() {
         prefs.branch = branch.editText.text.toString().trim()
         prefs.workflowFileName = workflow.editText.text.toString().trim()
         prefs.artifactName = artifact.editText.text.toString().trim()
-        prefs.token = token.editText.text.toString().trim()
+        if (token.editText.text.isNotBlank()) {
+            prefs.token = token.editText.text.toString().trim()
+        }
     }
 
     private fun updateGitHubSection() {
         val tokenText = token.editText.text.toString().trim()
-        val hasToken = tokenText.isNotBlank() && (isLikelyGitHubToken(tokenText) || prefs.token.isNotBlank())
+        val hasToken = prefs.token.isNotBlank() || (tokenText.isNotBlank() && isLikelyGitHubToken(tokenText))
         val hasRepo = repo.editText.text.toString().trim().isNotBlank()
         apkVersion.editText.setText(installedApkVersionLabel())
 
+        tokenSetup.text = if (hasToken) "Change GitHub token" else "Add GitHub token"
+        tokenSummary.text = if (hasToken) {
+            "GitHub token saved. Scan a new QR code or paste a replacement token when needed."
+        } else {
+            "Add a read-only GitHub token when you are ready to connect a repository."
+        }
         repositorySection.visibility = if (hasToken) View.VISIBLE else View.GONE
         chooseRepo.text = if (hasRepo) "Change repository" else "Choose repository"
 
@@ -274,10 +316,18 @@ class CompandroidSettingsActivity : Activity() {
 
         githubSettingsSection.visibility = if (hasToken && hasRepo) View.VISIBLE else View.GONE
         githubDetails.visibility = if (hasToken && hasRepo && detailsExpanded) View.VISIBLE else View.GONE
-        githubHeaderCaret.text = if (detailsExpanded) "^" else "v"
+        githubHeaderCaret.contentDescription = if (detailsExpanded) {
+            "Collapse GitHub settings"
+        } else {
+            "Expand GitHub settings"
+        }
+        githubHeaderCaret.setImageResource(
+            if (detailsExpanded) android.R.drawable.arrow_up_float else android.R.drawable.arrow_down_float
+        )
         githubHeaderMeta.text = if (hasRepo) fullName else "Select a repository first"
         listOf(owner, repo, branch, workflow, artifact).forEach { field ->
             field.editText.isEnabled = hasToken
+            field.actionButton?.isEnabled = hasToken
         }
         apkVersion.editText.isEnabled = false
         test.isEnabled = hasToken && hasRepo
@@ -376,6 +426,56 @@ class CompandroidSettingsActivity : Activity() {
         }
     }
 
+    private fun loadOwners() {
+        if (!requireToken()) return
+        status.text = "Loading owners..."
+        thread {
+            runCatching {
+                GitHubActionsClient(prefs.token).repositories()
+                    .map { it.owner }
+                    .distinct()
+                    .sortedWith(java.lang.String.CASE_INSENSITIVE_ORDER)
+            }.onSuccess { owners ->
+                runOnUiThread {
+                    showStringPicker(
+                        title = "Select Owner",
+                        emptyMessage = "GitHub access works, but no accessible owners were found.",
+                        values = owners
+                    ) { selected ->
+                        owner.editText.setText(selected)
+                        prefs.owner = selected
+                        repo.editText.setText("")
+                        prefs.repo = ""
+                        updateGitHubSection()
+                        status.text = "Selected $selected. Choose a repository next."
+                    }
+                }
+            }.onFailure { error ->
+                runOnUiThread { status.text = error.message ?: "Could not load owners" }
+            }
+        }
+    }
+
+    private fun loadRepositoriesForCurrentOwner() {
+        if (!requireToken()) return
+        val selectedOwner = owner.editText.text.toString().trim()
+        if (selectedOwner.isBlank()) {
+            status.text = "Choose an owner first."
+            return
+        }
+        status.text = "Loading repositories..."
+        thread {
+            runCatching {
+                GitHubActionsClient(prefs.token).repositories()
+                    .filter { it.owner.equals(selectedOwner, ignoreCase = true) }
+            }.onSuccess { repositories ->
+                runOnUiThread { showRepositoryNamePicker(repositories) }
+            }.onFailure { error ->
+                runOnUiThread { status.text = error.message ?: "Could not load repositories" }
+            }
+        }
+    }
+
     private fun showRepositoryPicker(repositories: List<GitHubRepository>) {
         if (repositories.isEmpty()) {
             status.text = "GitHub access works, but no accessible repositories were found."
@@ -396,6 +496,32 @@ class CompandroidSettingsActivity : Activity() {
                 prefs.repo = selected.name
                 fillBlankBuildSettingsFromDefaults()
                 detailsExpanded = false
+                updateGitHubSection()
+                status.text = "Selected ${selected.fullName}. Loading workflows..."
+                loadWorkflows(selected)
+            }
+            .show()
+    }
+
+    private fun showRepositoryNamePicker(repositories: List<GitHubRepository>) {
+        if (repositories.isEmpty()) {
+            status.text = "GitHub access works, but no repositories were found for ${owner.editText.text}."
+            return
+        }
+
+        val labels = repositories.map { repository ->
+            repository.name + if (repository.private) "  private" else ""
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Select Repository")
+            .setItems(labels) { _, which ->
+                val selected = repositories[which]
+                owner.editText.setText(selected.owner)
+                repo.editText.setText(selected.name)
+                prefs.owner = selected.owner
+                prefs.repo = selected.name
+                fillBlankBuildSettingsFromDefaults()
                 updateGitHubSection()
                 status.text = "Selected ${selected.fullName}. Loading workflows..."
                 loadWorkflows(selected)
@@ -431,6 +557,42 @@ class CompandroidSettingsActivity : Activity() {
         }
     }
 
+    private fun loadBranches() {
+        val config = currentGitHubSelection() ?: return
+        status.text = "Loading branches..."
+        thread {
+            runCatching {
+                GitHubActionsClient(prefs.token).branches(config.owner, config.repo)
+            }.onSuccess { branches ->
+                runOnUiThread {
+                    showStringPicker(
+                        title = "Select Branch",
+                        emptyMessage = "GitHub access works, but no branches were found.",
+                        values = branches
+                    ) { selected ->
+                        branch.editText.setText(selected)
+                        prefs.branch = selected
+                        updateGitHubSection()
+                        status.text = "Selected branch $selected."
+                    }
+                }
+            }.onFailure { error ->
+                runOnUiThread { status.text = error.message ?: "Could not load branches" }
+            }
+        }
+    }
+
+    private fun loadWorkflowsForCurrentRepo() {
+        val config = currentGitHubSelection() ?: return
+        status.text = "Loading workflows..."
+        loadWorkflows(GitHubRepository(
+            fullName = "${config.owner}/${config.repo}",
+            owner = config.owner,
+            name = config.repo,
+            private = false
+        ))
+    }
+
     private fun showWorkflowPicker(workflows: List<GitHubWorkflow>) {
         if (workflows.isEmpty()) {
             status.text = "Repository selected, but no active workflows were found."
@@ -448,6 +610,75 @@ class CompandroidSettingsActivity : Activity() {
                 status.text = "Selected ${selected.fileName}. GitHub settings are available below."
             }
             .show()
+    }
+
+    private fun loadArtifactNames() {
+        val config = currentGitHubSelection(requireBranch = true) ?: return
+        status.text = "Scanning successful workflow artifacts..."
+        thread {
+            runCatching {
+                GitHubActionsClient(prefs.token).artifactNames(
+                    owner = config.owner,
+                    repo = config.repo,
+                    branch = config.branch,
+                    workflowFileName = config.workflowFileName
+                )
+            }.onSuccess { artifacts ->
+                runOnUiThread {
+                    showStringPicker(
+                        title = "Select APK Artifact",
+                        emptyMessage = "No unexpired artifacts were found on successful runs for this branch and workflow.",
+                        values = artifacts
+                    ) { selected ->
+                        artifact.editText.setText(selected)
+                        prefs.artifactName = selected
+                        updateGitHubSection()
+                        status.text = "Selected artifact $selected."
+                    }
+                }
+            }.onFailure { error ->
+                runOnUiThread { status.text = error.message ?: "Could not load artifact names" }
+            }
+        }
+    }
+
+    private fun showStringPicker(
+        title: String,
+        emptyMessage: String,
+        values: List<String>,
+        onSelected: (String) -> Unit
+    ) {
+        if (values.isEmpty()) {
+            status.text = emptyMessage
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setItems(values.toTypedArray()) { _, which -> onSelected(values[which]) }
+            .show()
+    }
+
+    private fun requireToken(): Boolean {
+        if (prefs.token.isBlank()) {
+            status.text = "Paste or scan a read-only GitHub token first."
+            return false
+        }
+        return true
+    }
+
+    private fun currentGitHubSelection(requireBranch: Boolean = false): CompandroidConfig? {
+        if (!requireToken()) return null
+        val config = prefs.config(packageName)
+        if (config.owner.isBlank() || config.repo.isBlank()) {
+            status.text = "Choose a GitHub repository first."
+            return null
+        }
+        if (requireBranch && config.branch.isBlank()) {
+            status.text = "Choose a branch first."
+            return null
+        }
+        return config
     }
 
     private fun pullLatest() {
@@ -513,7 +744,7 @@ class CompandroidSettingsActivity : Activity() {
     }
 
     private fun heading(): TextView = TextView(this).apply {
-        text = "Compandroid"
+        text = "CompanDROID"
         textSize = 28f
         typeface = Typeface.DEFAULT_BOLD
         setTextColor(Color.rgb(15, 23, 42))
@@ -521,18 +752,80 @@ class CompandroidSettingsActivity : Activity() {
     }
 
     private fun description(): TextView = TextView(this).apply {
-        text = "First, get a GitHub read-only token. Ask your LLM to guide you through creating a fine-grained token with read-only access to the repository you want Compandroid to pull builds from."
+        text = "Connect a GitHub repository that publishes your APK build workflow."
         textSize = 14f
         setTextColor(Color.rgb(71, 85, 105))
         setLineSpacing(0f, 1.15f)
         setPadding(0, 0, 0, dp(20))
     }
 
-    private fun tokenPanel(): LinearLayout = panel().apply {
-        addView(eyebrow("Step 1"))
-        addView(title("Add GitHub read token", 18f))
-        addView(body("Paste the token here or scan the QR code generated on your desktop."))
-        addView(token.container, matchWrapParams(top = dp(10)))
+    private fun tokenSetupPanel(): LinearLayout = panel().apply {
+        addView(title("GitHub token", 18f))
+        addView(tokenSummary)
+        addView(tokenSetup)
+    }
+
+    private fun showTokenSetupDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Add GitHub token")
+            .setMessage(
+                "Use a read-only GitHub token for the repository that publishes your APK builds. " +
+                    "Scan a QR code from your desktop or paste the token manually."
+            )
+            .setPositiveButton("Scan QR") { _, _ ->
+                saveFields()
+                scanTokenQr()
+            }
+            .setNegativeButton("Paste token") { _, _ -> showPasteTokenDialog() }
+            .setNeutralButton("Cancel", null)
+            .show()
+    }
+
+    private fun showPasteTokenDialog() {
+        detachFromParent(token.container)
+        token.editText.setText(prefs.token)
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(4), dp(8), dp(4), 0)
+            addView(body("Paste the read-only token. It stays on this device and is used only for GitHub Actions access."))
+            addView(token.container)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Paste GitHub token")
+            .setView(content)
+            .setPositiveButton("Save", null)
+            .setNegativeButton("Back") { _, _ -> showTokenSetupDialog() }
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (saveTokenAndContinue()) {
+                    dialog.dismiss()
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun saveTokenAndContinue(): Boolean {
+        val parsedToken = parseGitHubToken(token.editText.text.toString())
+        val tokenValue = parsedToken.ifBlank { token.editText.text.toString().trim() }
+        if (!isLikelyGitHubToken(tokenValue)) {
+            status.text = "That does not look like a GitHub token."
+            return false
+        }
+
+        prefs.token = tokenValue
+        token.editText.setText(tokenValue)
+        updateGitHubSection()
+        status.text = "Token saved. Loading repositories..."
+        loadRepositories(tokenValue)
+        return true
+    }
+
+    private fun detachFromParent(view: View) {
+        (view.parent as? ViewGroup)?.removeView(view)
     }
 
     private fun panel(): LinearLayout = LinearLayout(this).apply {
@@ -568,7 +861,8 @@ class CompandroidSettingsActivity : Activity() {
         label: String,
         value: String,
         hidden: Boolean = false,
-        cameraButton: Boolean = false
+        cameraButton: Boolean = false,
+        dropdownButton: Boolean = false
     ): TitledField {
         val title = TextView(this).apply {
             text = label
@@ -591,11 +885,14 @@ class CompandroidSettingsActivity : Activity() {
                 InputType.TYPE_CLASS_TEXT
             }
         }
-        val actionButton = if (cameraButton) {
+        val actionButton = if (cameraButton || dropdownButton) {
             ImageButton(this).apply {
-                contentDescription = "Scan token QR"
-                setImageResource(android.R.drawable.ic_menu_camera)
+                contentDescription = if (cameraButton) "Scan token QR" else "Choose $label"
+                setImageResource(
+                    if (cameraButton) android.R.drawable.ic_menu_camera else android.R.drawable.arrow_down_float
+                )
                 setBackgroundColor(0x00000000)
+                setColorFilter(Color.rgb(51, 65, 85))
                 setPadding(dp(14), dp(14), dp(14), dp(14))
             }
         } else {
