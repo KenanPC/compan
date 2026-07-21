@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+  <title>Compandroid Token QR</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f7f4;
+      --ink: #151515;
+      --muted: #5f646b;
+      --line: #d8d8d0;
+      --panel: #ffffff;
+      --accent: #116b5f;
+      --danger: #9b1c1c;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171817;
+        --ink: #f3f2ec;
+        --muted: #b8b9b2;
+        --line: #3b3d38;
+        --panel: #20211f;
+        --accent: #57c6b7;
+        --danger: #ff8a8a;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(940px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.05;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 24px;
+      margin-top: 28px;
+      align-items: start;
+    }
+
+    section {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px;
+      background: transparent;
+      color: var(--ink);
+      font: 0.95rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    textarea:focus {
+      outline: 3px solid color-mix(in srgb, var(--accent), transparent 72%);
+      border-color: var(--accent);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 14px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    button.danger {
+      border-color: color-mix(in srgb, var(--danger), var(--line) 40%);
+      color: var(--danger);
+    }
+
+    .note {
+      margin-top: 16px;
+      font-size: 0.92rem;
+    }
+
+    .qr-panel {
+      text-align: center;
+    }
+
+    #qr {
+      display: grid;
+      place-items: center;
+      min-height: 300px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 18px;
+      overflow: auto;
+    }
+
+    #qr svg {
+      width: min(100%, 280px);
+      height: auto;
+      display: block;
+    }
+
+    .placeholder {
+      color: #6c716e;
+      font-weight: 700;
+    }
+
+    .status {
+      min-height: 24px;
+      margin-top: 12px;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    ul {
+      margin: 14px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        padding: 28px 0;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Compandroid Token QR</h1>
+    <p>Offline QR generator for a read-only GitHub token. The token stays in this page and is erased automatically.</p>
+
+    <div class="layout">
+      <section>
+        <label for="token">GitHub token</label>
+        <textarea id="token" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Paste the read-only GitHub token"></textarea>
+        <div class="controls">
+          <button class="primary" id="generate" type="button">Generate QR</button>
+          <button class="danger" id="clear" type="button">Erase Session</button>
+        </div>
+        <p class="note">Use only the installed app token here: Metadata read, Contents read, and Actions read. Do not paste an LLM agent write token into this page.</p>
+        <ul>
+          <li>Works from a local file with no network calls.</li>
+          <li>Clears the token after 2 minutes of inactivity.</li>
+          <li>Clears immediately when you click <strong>Erase Session</strong> or close the page.</li>
+        </ul>
+      </section>
+
+      <section class="qr-panel">
+        <div id="qr"><span class="placeholder">QR appears here</span></div>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const EC_M_BLOCKS = {
+        1: [[1, 26, 16]],
+        2: [[1, 44, 28]],
+        3: [[1, 70, 44]],
+        4: [[2, 50, 32]],
+        5: [[2, 67, 43]],
+        6: [[4, 43, 27]],
+        7: [[4, 49, 31]],
+        8: [[2, 60, 38], [2, 61, 39]],
+        9: [[3, 58, 36], [2, 59, 37]],
+        10: [[4, 69, 43], [1, 70, 44]]
+      };
+      const BYTE_CAPACITY_M = [0, 14, 26, 42, 62, 84, 106, 122, 152, 180, 213];
+      const ALIGNMENT = {
+        1: [],
+        2: [6, 18],
+        3: [6, 22],
+        4: [6, 26],
+        5: [6, 30],
+        6: [6, 34],
+        7: [6, 22, 38],
+        8: [6, 24, 42],
+        9: [6, 26, 46],
+        10: [6, 28, 50]
+      };
+      const MASKS = [
+        (r, c) => (r + c) % 2 === 0,
+        (r) => r % 2 === 0,
+        (_r, c) => c % 3 === 0,
+        (r, c) => (r + c) % 3 === 0,
+        (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+        (r, c) => ((r * c) % 2 + (r * c) % 3) === 0,
+        (r, c) => (((r * c) % 2 + (r * c) % 3) % 2) === 0,
+        (r, c) => (((r + c) % 2 + (r * c) % 3) % 2) === 0
+      ];
+
+      const tokenInput = document.getElementById("token");
+      const qr = document.getElementById("qr");
+      const status = document.getElementById("status");
+      const generateButton = document.getElementById("generate");
+      const clearButton = document.getElementById("clear");
+      let wipeTimer = 0;
+
+      function makeGaloisTables() {
+        const exp = new Array(512);
+        const log = new Array(256);
+        let value = 1;
+        for (let i = 0; i < 255; i += 1) {
+          exp[i] = value;
+          log[value] = i;
+          value <<= 1;
+          if (value & 0x100) value ^= 0x11d;
+        }
+        for (let i = 255; i < 512; i += 1) exp[i] = exp[i - 255];
+        return { exp, log };
+      }
+
+      const GF = makeGaloisTables();
+
+      function gfMul(a, b) {
+        if (a === 0 || b === 0) return 0;
+        return GF.exp[GF.log[a] + GF.log[b]];
+      }
+
+      function rsGenerator(degree) {
+        let poly = [1];
+        for (let i = 0; i < degree; i += 1) {
+          const next = new Array(poly.length + 1).fill(0);
+          for (let j = 0; j < poly.length; j += 1) {
+            next[j] ^= poly[j];
+            next[j + 1] ^= gfMul(poly[j], GF.exp[i]);
+          }
+          poly = next;
+        }
+        return poly;
+      }
+
+      function rsRemainder(data, degree) {
+        const generator = rsGenerator(degree);
+        const result = new Array(degree).fill(0);
+        for (const byte of data) {
+          const factor = byte ^ result.shift();
+          result.push(0);
+          for (let i = 0; i < degree; i += 1) {
+            result[i] ^= gfMul(generator[i + 1], factor);
+          }
+        }
+        return result;
+      }
+
+      class BitBuffer {
+        constructor() {
+          this.bits = [];
+        }
+
+        append(value, length) {
+          for (let i = length - 1; i >= 0; i -= 1) {
+            this.bits.push((value >>> i) & 1);
+          }
+        }
+
+        appendBytes(bytes) {
+          for (const byte of bytes) this.append(byte, 8);
+        }
+
+        toBytes() {
+          const out = [];
+          for (let i = 0; i < this.bits.length; i += 8) {
+            let value = 0;
+            for (let j = 0; j < 8; j += 1) value = (value << 1) | (this.bits[i + j] || 0);
+            out.push(value);
+          }
+          return out;
+        }
+      }
+
+      function versionFor(length) {
+        for (let version = 1; version < BYTE_CAPACITY_M.length; version += 1) {
+          if (length <= BYTE_CAPACITY_M[version]) return version;
+        }
+        throw new Error("Token is too long for this local generator.");
+      }
+
+      function totalDataCodewords(version) {
+        return EC_M_BLOCKS[version].reduce((sum, [count, _total, data]) => sum + count * data, 0);
+      }
+
+      function createDataCodewords(bytes, version) {
+        const bitBuffer = new BitBuffer();
+        const totalData = totalDataCodewords(version);
+        const capacityBits = totalData * 8;
+        bitBuffer.append(0b0100, 4);
+        bitBuffer.append(bytes.length, version < 10 ? 8 : 16);
+        bitBuffer.appendBytes(bytes);
+        bitBuffer.append(0, Math.min(4, capacityBits - bitBuffer.bits.length));
+        while (bitBuffer.bits.length % 8 !== 0) bitBuffer.append(0, 1);
+        const data = bitBuffer.toBytes();
+        for (let pad = 0xec; data.length < totalData; pad = pad === 0xec ? 0x11 : 0xec) {
+          data.push(pad);
+        }
+        return data;
+      }
+
+      function interleaveBlocks(data, version) {
+        const blocks = [];
+        let offset = 0;
+        for (const [count, total, dataCount] of EC_M_BLOCKS[version]) {
+          for (let i = 0; i < count; i += 1) {
+            const chunk = data.slice(offset, offset + dataCount);
+            offset += dataCount;
+            blocks.push({
+              data: chunk,
+              ec: rsRemainder(chunk, total - dataCount)
+            });
+          }
+        }
+        const out = [];
+        const maxData = Math.max(...blocks.map((block) => block.data.length));
+        const maxEc = Math.max(...blocks.map((block) => block.ec.length));
+        for (let i = 0; i < maxData; i += 1) {
+          for (const block of blocks) if (i < block.data.length) out.push(block.data[i]);
+        }
+        for (let i = 0; i < maxEc; i += 1) {
+          for (const block of blocks) if (i < block.ec.length) out.push(block.ec[i]);
+        }
+        return out;
+      }
+
+      function makeMatrix(size) {
+        return Array.from({ length: size }, () => Array(size).fill(false));
+      }
+
+      function makeReserved(size) {
+        return Array.from({ length: size }, () => Array(size).fill(false));
+      }
+
+      function setModule(matrix, reserved, row, col, value, reserve = true) {
+        if (row < 0 || col < 0 || row >= matrix.length || col >= matrix.length) return;
+        matrix[row][col] = Boolean(value);
+        if (reserve) reserved[row][col] = true;
+      }
+
+      function placeFinder(matrix, reserved, row, col) {
+        for (let r = -1; r <= 7; r += 1) {
+          for (let c = -1; c <= 7; c += 1) {
+            const rr = row + r;
+            const cc = col + c;
+            const inOuter = r >= 0 && r <= 6 && c >= 0 && c <= 6;
+            const inInner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+            const onRing = inOuter && (r === 0 || r === 6 || c === 0 || c === 6);
+            setModule(matrix, reserved, rr, cc, onRing || inInner);
+          }
+        }
+      }
+
+      function placeAlignment(matrix, reserved, centerRow, centerCol) {
+        if (reserved[centerRow][centerCol]) return;
+        for (let r = -2; r <= 2; r += 1) {
+          for (let c = -2; c <= 2; c += 1) {
+            const dark = Math.max(Math.abs(r), Math.abs(c)) !== 1;
+            setModule(matrix, reserved, centerRow + r, centerCol + c, dark);
+          }
+        }
+      }
+
+      function reserveFormat(matrix, reserved) {
+        const size = matrix.length;
+        for (let i = 0; i < 9; i += 1) {
+          setModule(matrix, reserved, 8, i, false);
+          setModule(matrix, reserved, i, 8, false);
+        }
+        for (let i = 0; i < 8; i += 1) {
+          setModule(matrix, reserved, size - 1 - i, 8, false);
+          setModule(matrix, reserved, 8, size - 1 - i, false);
+        }
+      }
+
+      function drawFunctionPatterns(matrix, reserved, version) {
+        const size = matrix.length;
+        placeFinder(matrix, reserved, 0, 0);
+        placeFinder(matrix, reserved, 0, size - 7);
+        placeFinder(matrix, reserved, size - 7, 0);
+        for (let i = 8; i < size - 8; i += 1) {
+          setModule(matrix, reserved, 6, i, i % 2 === 0);
+          setModule(matrix, reserved, i, 6, i % 2 === 0);
+        }
+        for (const row of ALIGNMENT[version]) {
+          for (const col of ALIGNMENT[version]) placeAlignment(matrix, reserved, row, col);
+        }
+        reserveFormat(matrix, reserved);
+        setModule(matrix, reserved, size - 8, 8, true);
+      }
+
+      function codewordsToBits(codewords) {
+        const bits = [];
+        for (const word of codewords) {
+          for (let i = 7; i >= 0; i -= 1) bits.push((word >>> i) & 1);
+        }
+        return bits;
+      }
+
+      function placeData(matrix, reserved, bits) {
+        const size = matrix.length;
+        let index = 0;
+        let upward = true;
+        for (let right = size - 1; right >= 1; right -= 2) {
+          if (right === 6) right -= 1;
+          for (let vert = 0; vert < size; vert += 1) {
+            const row = upward ? size - 1 - vert : vert;
+            for (let dx = 0; dx < 2; dx += 1) {
+              const col = right - dx;
+              if (!reserved[row][col]) {
+                matrix[row][col] = Boolean(bits[index] || 0);
+                index += 1;
+              }
+            }
+          }
+          upward = !upward;
+        }
+      }
+
+      function cloneMatrix(matrix) {
+        return matrix.map((row) => row.slice());
+      }
+
+      function applyMask(matrix, reserved, mask) {
+        const next = cloneMatrix(matrix);
+        for (let r = 0; r < matrix.length; r += 1) {
+          for (let c = 0; c < matrix.length; c += 1) {
+            if (!reserved[r][c] && MASKS[mask](r, c)) next[r][c] = !next[r][c];
+          }
+        }
+        return next;
+      }
+
+      function formatBits(mask) {
+        let data = mask;
+        let value = data << 10;
+        const generator = 0x537;
+        for (let i = 14; i >= 10; i -= 1) {
+          if (((value >>> i) & 1) !== 0) value ^= generator << (i - 10);
+        }
+        return ((data << 10) | value) ^ 0x5412;
+      }
+
+      function drawFormat(matrix, mask) {
+        const size = matrix.length;
+        const bits = formatBits(mask);
+        for (let i = 0; i < 15; i += 1) {
+          const value = Boolean((bits >>> i) & 1);
+          if (i < 6) matrix[i][8] = value;
+          else if (i < 8) matrix[i + 1][8] = value;
+          else matrix[size - 15 + i][8] = value;
+
+          if (i < 8) matrix[8][size - i - 1] = value;
+          else if (i < 9) matrix[8][15 - i] = value;
+          else matrix[8][14 - i] = value;
+        }
+        matrix[size - 8][8] = true;
+      }
+
+      function penalty(matrix) {
+        const size = matrix.length;
+        let score = 0;
+        for (let r = 0; r < size; r += 1) {
+          let runColor = matrix[r][0];
+          let run = 1;
+          for (let c = 1; c < size; c += 1) {
+            if (matrix[r][c] === runColor) run += 1;
+            else {
+              if (run >= 5) score += 3 + run - 5;
+              runColor = matrix[r][c];
+              run = 1;
+            }
+          }
+          if (run >= 5) score += 3 + run - 5;
+        }
+        for (let c = 0; c < size; c += 1) {
+          let runColor = matrix[0][c];
+          let run = 1;
+          for (let r = 1; r < size; r += 1) {
+            if (matrix[r][c] === runColor) run += 1;
+            else {
+              if (run >= 5) score += 3 + run - 5;
+              runColor = matrix[r][c];
+              run = 1;
+            }
+          }
+          if (run >= 5) score += 3 + run - 5;
+        }
+        for (let r = 0; r < size - 1; r += 1) {
+          for (let c = 0; c < size - 1; c += 1) {
+            const color = matrix[r][c];
+            if (matrix[r][c + 1] === color && matrix[r + 1][c] === color && matrix[r + 1][c + 1] === color) {
+              score += 3;
+            }
+          }
+        }
+        const pattern = [true, false, true, true, true, false, true, false, false, false, false];
+        for (let r = 0; r < size; r += 1) {
+          for (let c = 0; c <= size - 11; c += 1) {
+            if (pattern.every((value, i) => matrix[r][c + i] === value)) score += 40;
+            if (pattern.every((value, i) => matrix[r][c + 10 - i] === value)) score += 40;
+          }
+        }
+        for (let c = 0; c < size; c += 1) {
+          for (let r = 0; r <= size - 11; r += 1) {
+            if (pattern.every((value, i) => matrix[r + i][c] === value)) score += 40;
+            if (pattern.every((value, i) => matrix[r + 10 - i][c] === value)) score += 40;
+          }
+        }
+        const dark = matrix.flat().filter(Boolean).length;
+        score += Math.floor(Math.abs((dark * 20 / (size * size)) - 10)) * 10;
+        return score;
+      }
+
+      function makeQr(text) {
+        const bytes = new TextEncoder().encode(text);
+        const version = versionFor(bytes.length);
+        const data = createDataCodewords(Array.from(bytes), version);
+        const codewords = interleaveBlocks(data, version);
+        const size = version * 4 + 17;
+        const base = makeMatrix(size);
+        const reserved = makeReserved(size);
+        drawFunctionPatterns(base, reserved, version);
+        placeData(base, reserved, codewordsToBits(codewords));
+
+        let best = null;
+        for (let mask = 0; mask < MASKS.length; mask += 1) {
+          const candidate = applyMask(base, reserved, mask);
+          drawFormat(candidate, mask);
+          const candidatePenalty = penalty(candidate);
+          if (!best || candidatePenalty < best.penalty) best = { matrix: candidate, mask, penalty: candidatePenalty };
+        }
+        return best.matrix;
+      }
+
+      function renderSvg(matrix) {
+        const quiet = 4;
+        const size = matrix.length + quiet * 2;
+        const cells = [];
+        for (let r = 0; r < matrix.length; r += 1) {
+          for (let c = 0; c < matrix.length; c += 1) {
+            if (matrix[r][c]) cells.push(`<rect x="${c + quiet}" y="${r + quiet}" width="1" height="1"/>`);
+          }
+        }
+        return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Token QR code"><rect width="100%" height="100%" fill="#fff"/><g fill="#000">${cells.join("")}</g></svg>`;
+      }
+
+      function setStatus(message, isError = false) {
+        status.textContent = message;
+        status.classList.toggle("error", isError);
+      }
+
+      function scheduleWipe() {
+        window.clearTimeout(wipeTimer);
+        wipeTimer = window.setTimeout(() => eraseSession("Session erased after 2 minutes."), 120000);
+      }
+
+      function generate() {
+        const token = tokenInput.value.trim();
+        if (!token) {
+          eraseSession("Paste a token first.");
+          status.classList.add("error");
+          return;
+        }
+        try {
+          qr.innerHTML = renderSvg(makeQr(token));
+          setStatus("QR generated locally. Scan it, then erase the session.");
+          scheduleWipe();
+        } catch (error) {
+          qr.innerHTML = '<span class="placeholder">QR appears here</span>';
+          setStatus(error.message || "Could not generate QR.", true);
+        }
+      }
+
+      function eraseSession(message = "Session erased.") {
+        window.clearTimeout(wipeTimer);
+        tokenInput.value = "";
+        qr.innerHTML = '<span class="placeholder">QR appears here</span>';
+        setStatus(message);
+      }
+
+      generateButton.addEventListener("click", generate);
+      clearButton.addEventListener("click", () => eraseSession());
+      tokenInput.addEventListener("input", scheduleWipe);
+      tokenInput.addEventListener("keydown", (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") generate();
+      });
+      window.addEventListener("pagehide", () => eraseSession(""));
+      window.addEventListener("beforeunload", () => eraseSession(""));
+    })();
+  </script>
+</body>
+</html>

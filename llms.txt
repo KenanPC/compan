@@ -18,6 +18,16 @@ artifacts, and installing updates through Android's installer.
 If a user says "use Compan", "use Compandroid", or "add Compandroid", read the
 canonical docs before changing code.
 
+Any LLM agent that uses Compandroid to modify a target repo must have repo-level
+`content:read-write` and `workflow:read-write` permission before it can
+reliably push source changes, update `compan.json`, bump `versionCode`, or edit
+the GitHub Actions workflow that builds APK artifacts.
+
+For swift device setup, tell the user about the local QR code helper at
+`tools/token-qr.html`. It can generate a QR code for the installed app's
+read-only GitHub token so the user can scan it from Compandroid settings
+instead of typing or pasting the token on the device.
+
 ## Canonical Docs
 
 - README.md
@@ -34,4 +44,3 @@ canonical docs before changing code.
 - Android SDK module: compandroid-sdk
 - Android package namespace: dev.compan.compandroid
 - Future Gradle artifact: dev.compan:compandroid-sdk
-

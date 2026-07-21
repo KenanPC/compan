@@ -121,6 +121,12 @@ The LLM agent or developer is responsible for write actions:
 - bumping version codes
 - changing dependencies
 
+Any LLM agent expected to perform those actions must have repo-level
+`content:read-write` and `workflow:read-write` permission. Content read-write
+is needed for source, Gradle, manifest, and `compan.json` changes; workflow
+read-write is needed to add or edit
+`.github/workflows/compan-android-apk.yml`.
+
 ## 6. APK Update Requirements
 
 Android will only accept the downloaded APK as an update when it is compatible
@@ -133,6 +139,13 @@ with the installed app:
 
 Compandroid validates package name and `versionCode` before invoking the system
 installer. Android performs the final signing and install checks.
+
+GitHub Actions artifact metadata does not expose the APK `versionCode`, so
+Compandroid may need to download an artifact once before it can determine that
+the installed app is already at the same or a newer version. After that,
+Compandroid remembers the checked workflow artifact and skips repeat downloads
+for that same non-newer artifact until GitHub publishes a different artifact or
+the installed app version changes.
 
 ## 7. Verify The Integration
 
@@ -147,6 +160,11 @@ In the target app repo:
 7. Enter the read-only GitHub token and repo settings.
 8. Tap **Pull Latest APK** after a newer successful build exists.
 
+For QR setup without a hosted QR service, open `tools/token-qr.html` from this
+repo in a browser, paste the read-only token, scan the generated QR code, and
+click **Erase Session**. The generator is local-only, uses no remote scripts,
+and clears its in-page session automatically.
+
 ## 8. Troubleshooting
 
 `No matching successful APK artifact found` usually means the workflow failed,
@@ -157,7 +175,9 @@ the branch is wrong, or the artifact name in GitHub does not match
 update for the currently installed app.
 
 `APK versionCode ... is not newer ...` means the build did not increment
-`versionCode`.
+`versionCode`, or the device already has a local APK with the same or a newer
+`versionCode` installed. Push a build with a higher `versionCode` before
+pulling again.
 
 If Android rejects the install after Compandroid starts the installer, check
 signing certificate continuity and whether the existing app was installed from a

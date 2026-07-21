@@ -34,6 +34,50 @@ internal class CompandroidPrefs(context: Context) {
         get() = prefs.getBoolean("hideLaunchNotice", false)
         set(value) = prefs.edit().putBoolean("hideLaunchNotice", value).apply()
 
+    fun wasArtifactCheckedAsNotNewer(
+        config: CompandroidConfig,
+        artifact: GitHubArtifact,
+        installedVersionCode: Long
+    ): Boolean =
+        prefs.getString("notNewerOwner", "") == config.owner &&
+            prefs.getString("notNewerRepo", "") == config.repo &&
+            prefs.getString("notNewerBranch", "") == config.branch &&
+            prefs.getString("notNewerWorkflow", "") == config.workflowFileName &&
+            prefs.getString("notNewerArtifactName", "") == config.artifactName &&
+            prefs.getLong("notNewerWorkflowRunId", -1L) == artifact.workflowRunId &&
+            prefs.getString("notNewerHeadSha", "") == artifact.headSha &&
+            prefs.getLong("notNewerInstalledVersionCode", -1L) == installedVersionCode
+
+    fun rememberArtifactNotNewer(
+        config: CompandroidConfig,
+        artifact: GitHubArtifact,
+        installedVersionCode: Long
+    ) {
+        prefs.edit()
+            .putString("notNewerOwner", config.owner)
+            .putString("notNewerRepo", config.repo)
+            .putString("notNewerBranch", config.branch)
+            .putString("notNewerWorkflow", config.workflowFileName)
+            .putString("notNewerArtifactName", config.artifactName)
+            .putLong("notNewerWorkflowRunId", artifact.workflowRunId)
+            .putString("notNewerHeadSha", artifact.headSha)
+            .putLong("notNewerInstalledVersionCode", installedVersionCode)
+            .apply()
+    }
+
+    fun clearArtifactNotNewer() {
+        prefs.edit()
+            .remove("notNewerOwner")
+            .remove("notNewerRepo")
+            .remove("notNewerBranch")
+            .remove("notNewerWorkflow")
+            .remove("notNewerArtifactName")
+            .remove("notNewerWorkflowRunId")
+            .remove("notNewerHeadSha")
+            .remove("notNewerInstalledVersionCode")
+            .apply()
+    }
+
     fun clearToken() {
         prefs.edit().remove("token").apply()
     }

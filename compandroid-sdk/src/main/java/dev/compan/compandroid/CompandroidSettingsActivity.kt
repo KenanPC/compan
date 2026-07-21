@@ -2,8 +2,14 @@ package dev.compan.compandroid
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -26,9 +32,16 @@ class CompandroidSettingsActivity : Activity() {
     private lateinit var branch: TitledField
     private lateinit var workflow: TitledField
     private lateinit var artifact: TitledField
+    private lateinit var apkVersion: TitledField
     private lateinit var token: TitledField
-    private lateinit var repoSummary: Button
+    private lateinit var selectedRepo: TextView
+    private lateinit var repositorySection: LinearLayout
     private lateinit var chooseRepo: Button
+    private lateinit var githubHeader: LinearLayout
+    private lateinit var githubHeaderTitle: TextView
+    private lateinit var githubHeaderMeta: TextView
+    private lateinit var githubHeaderCaret: TextView
+    private lateinit var githubSettingsSection: LinearLayout
     private lateinit var githubDetails: LinearLayout
     private lateinit var test: Button
     private lateinit var pull: Button
@@ -40,33 +53,35 @@ class CompandroidSettingsActivity : Activity() {
         title = "Compandroid"
 
         val hasToken = prefs.token.isNotBlank()
-        token = field("GitHub read token", prefs.token, hidden = true, cameraButton = true)
+        token = field("Paste read-only token", prefs.token, hidden = true, cameraButton = true)
         owner = field("Owner", if (hasToken) prefs.owner else "")
         repo = field("Repository", if (hasToken) prefs.repo else "")
         branch = field("Branch", if (hasToken) prefs.branch else "")
         workflow = field("Workflow file", if (hasToken) prefs.workflowFileName else "")
         artifact = field("APK artifact name", if (hasToken) prefs.artifactName else "")
+        apkVersion = field("Installed APK version", installedApkVersionLabel())
+        apkVersion.editText.isEnabled = false
 
         status = TextView(this).apply {
-            text = if (hasToken) "Ready" else "Scan or paste a read-only GitHub token to begin."
+            text = if (hasToken) "Token ready. Choose the repository that publishes your APK." else ""
             textSize = 14f
-            setPadding(0, 24, 0, 24)
+            setTextColor(Color.rgb(71, 85, 105))
+            setPadding(0, dp(16), 0, dp(16))
         }
 
-        repoSummary = Button(this).apply {
-            setAllCaps(false)
-            setOnClickListener {
-                detailsExpanded = !detailsExpanded
-                updateGitHubSection()
-            }
+        selectedRepo = TextView(this).apply {
+            textSize = 14f
+            setTextColor(Color.rgb(71, 85, 105))
+            setPadding(0, 0, 0, dp(12))
         }
 
         chooseRepo = Button(this).apply {
-            text = "Choose Repository"
+            text = "Choose repository"
+            stylePrimaryButton()
             setOnClickListener {
                 saveFields()
                 if (prefs.token.isBlank()) {
-                    status.text = "Scan or paste a read-only GitHub token first."
+                    status.text = "Paste or scan a read-only GitHub token first."
                 } else {
                     status.text = "Loading repositories..."
                     loadRepositories(prefs.token)
@@ -74,16 +89,61 @@ class CompandroidSettingsActivity : Activity() {
             }
         }
 
+        repositorySection = panel().apply {
+            addView(eyebrow("Step 2"))
+            addView(title("Choose repository", 18f))
+            addView(body("Pick the GitHub repo that contains the Compandroid APK build workflow."))
+            addView(selectedRepo)
+            addView(chooseRepo, matchWrapParams(top = dp(4)))
+        }
+
+        githubHeaderTitle = TextView(this).apply {
+            text = "GitHub settings"
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(15, 23, 42))
+        }
+        githubHeaderMeta = TextView(this).apply {
+            textSize = 13f
+            setTextColor(Color.rgb(100, 116, 139))
+            setPadding(0, dp(4), 0, 0)
+        }
+        githubHeaderCaret = TextView(this).apply {
+            textSize = 24f
+            setTextColor(Color.rgb(51, 65, 85))
+            setPadding(dp(16), 0, 0, 0)
+        }
+        githubHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            isClickable = true
+            isFocusable = true
+            setPadding(0, 0, 0, 0)
+            setOnClickListener {
+                detailsExpanded = !detailsExpanded
+                updateGitHubSection()
+            }
+            addView(LinearLayout(this@CompandroidSettingsActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(githubHeaderTitle)
+                addView(githubHeaderMeta)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(githubHeaderCaret)
+        }
+
         githubDetails = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(16), 0, 0)
             addView(owner.container)
+            addView(repo.container)
             addView(branch.container)
             addView(workflow.container)
             addView(artifact.container)
+            addView(apkVersion.container)
         }
 
         val save = Button(this).apply {
-            text = "Save Settings"
+            text = "Save settings"
+            styleSecondaryButton()
             setOnClickListener {
                 val hadNoToken = prefs.token.isBlank()
                 saveFields()
@@ -103,7 +163,8 @@ class CompandroidSettingsActivity : Activity() {
         }
 
         pull = Button(this).apply {
-            text = "Pull Latest APK"
+            text = "Pull latest APK"
+            stylePrimaryButton()
             setOnClickListener {
                 save.performClick()
                 pullLatest()
@@ -111,7 +172,8 @@ class CompandroidSettingsActivity : Activity() {
         }
 
         test = Button(this).apply {
-            text = "Test GitHub Connection"
+            text = "Test GitHub connection"
+            styleSecondaryButton()
             setOnClickListener {
                 save.performClick()
                 testConnection()
@@ -119,7 +181,8 @@ class CompandroidSettingsActivity : Activity() {
         }
 
         val clearToken = Button(this).apply {
-            text = "Clear Token"
+            text = "Clear token"
+            styleTextButton()
             setOnClickListener {
                 prefs.clearToken()
                 prefs.owner = ""
@@ -135,25 +198,56 @@ class CompandroidSettingsActivity : Activity() {
             }
         }
 
+        githubSettingsSection = panel().apply {
+            addView(githubHeader)
+            addView(githubDetails)
+            addView(save, matchWrapParams(top = dp(12)))
+            addView(test, matchWrapParams(top = dp(8)))
+            addView(clearToken, matchWrapParams(top = dp(8)))
+        }
+
+        token.editText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val value = s?.toString()?.trim().orEmpty()
+                if (value.isBlank()) {
+                    prefs.clearToken()
+                } else if (isLikelyGitHubToken(value)) {
+                    prefs.token = parseGitHubToken(value).ifBlank { value }
+                }
+                updateGitHubSection()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(32, statusBarHeight() + 24, 32, 32)
+            setBackgroundColor(Color.rgb(248, 250, 252))
+            setPadding(dp(24), statusBarHeight() + dp(24), dp(24), dp(32))
             addView(heading())
             addView(description())
-            addView(sectionTitle("GitHub"))
-            addView(token.container)
-            addView(repoSummary)
-            addView(chooseRepo)
-            addView(githubDetails)
-            addView(save)
-            addView(test)
-            addView(pull)
-            addView(clearToken)
+            addView(tokenPanel())
+            addView(repositorySection, matchWrapParams(top = dp(16)))
+            addView(githubSettingsSection, matchWrapParams(top = dp(16)))
+            addView(pull, matchWrapParams(top = dp(16)))
             addView(status)
         }
 
-        setContentView(ScrollView(this).apply { addView(layout) })
+        setContentView(ScrollView(this).apply {
+            setBackgroundColor(Color.rgb(248, 250, 252))
+            addView(layout, ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
+        })
         updateGitHubSection()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::apkVersion.isInitialized) {
+            apkVersion.editText.setText(installedApkVersionLabel())
+        }
     }
 
     private fun saveFields() {
@@ -166,25 +260,29 @@ class CompandroidSettingsActivity : Activity() {
     }
 
     private fun updateGitHubSection() {
-        val hasToken = token.editText.text.toString().trim().isNotBlank() || prefs.token.isNotBlank()
+        val tokenText = token.editText.text.toString().trim()
+        val hasToken = tokenText.isNotBlank() && (isLikelyGitHubToken(tokenText) || prefs.token.isNotBlank())
         val hasRepo = repo.editText.text.toString().trim().isNotBlank()
+        apkVersion.editText.setText(installedApkVersionLabel())
 
-        chooseRepo.visibility = if (hasToken) View.VISIBLE else View.GONE
-        chooseRepo.text = if (hasRepo) "Change Repository" else "Choose Repository"
+        repositorySection.visibility = if (hasToken) View.VISIBLE else View.GONE
+        chooseRepo.text = if (hasRepo) "Change repository" else "Choose repository"
 
-        repoSummary.visibility = if (hasToken && hasRepo) View.VISIBLE else View.GONE
-        repoSummary.text = if (detailsExpanded) {
-            "v ${owner.editText.text}/${repo.editText.text}"
-        } else {
-            "> ${owner.editText.text}/${repo.editText.text}"
-        }
+        val fullName = "${owner.editText.text}/${repo.editText.text}"
+        selectedRepo.visibility = if (hasRepo) View.VISIBLE else View.GONE
+        selectedRepo.text = if (hasRepo) "Selected: $fullName" else ""
 
+        githubSettingsSection.visibility = if (hasToken && hasRepo) View.VISIBLE else View.GONE
         githubDetails.visibility = if (hasToken && hasRepo && detailsExpanded) View.VISIBLE else View.GONE
-        listOf(owner, branch, workflow, artifact).forEach { field ->
+        githubHeaderCaret.text = if (detailsExpanded) "^" else "v"
+        githubHeaderMeta.text = if (hasRepo) fullName else "Select a repository first"
+        listOf(owner, repo, branch, workflow, artifact).forEach { field ->
             field.editText.isEnabled = hasToken
         }
+        apkVersion.editText.isEnabled = false
         test.isEnabled = hasToken && hasRepo
         pull.isEnabled = hasToken && hasRepo
+        pull.visibility = if (hasToken && hasRepo) View.VISIBLE else View.GONE
     }
 
     private fun clearConfigFields() {
@@ -245,6 +343,25 @@ class CompandroidSettingsActivity : Activity() {
         }
 
         return ""
+    }
+
+    private fun isLikelyGitHubToken(value: String): Boolean =
+        parseGitHubToken(value).isNotBlank() || value.length >= 20
+
+    private fun installedApkVersionLabel(): String {
+        val targetPackage = prefs.config(packageName).packageName.ifBlank { packageName }
+        return runCatching {
+            val packageInfo = packageManager.getPackageInfo(targetPackage, 0)
+            val versionName = packageInfo.versionName?.takeIf { it.isNotBlank() } ?: "unknown"
+            val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                packageInfo.versionCode.toLong()
+            }
+            "$versionName (versionCode $versionCode)"
+        }.getOrElse {
+            "Not installed"
+        }
     }
 
     private fun loadRepositories(token: String) {
@@ -320,7 +437,7 @@ class CompandroidSettingsActivity : Activity() {
                 workflow.editText.setText(selected.fileName)
                 prefs.workflowFileName = selected.fileName
                 updateGitHubSection()
-                status.text = "Selected ${selected.fileName}. Expand repo details to review build settings."
+                status.text = "Selected ${selected.fileName}. GitHub settings are available below."
             }
             .show()
     }
@@ -336,9 +453,25 @@ class CompandroidSettingsActivity : Activity() {
                 val client = GitHubActionsClient(prefs.token)
                 val latestArtifact = client.latestSuccessfulArtifact(config)
                     ?: error("No matching successful APK artifact found")
+                val installedVersionCode = ApkValidator.installedVersionCode(this, config.packageName)
+                if (prefs.wasArtifactCheckedAsNotNewer(config, latestArtifact, installedVersionCode)) {
+                    error(
+                        "Latest GitHub APK was already checked and is not newer than installed " +
+                            "versionCode $installedVersionCode. Push a build with a higher versionCode."
+                    )
+                }
                 val apk = client.downloadArtifactApk(latestArtifact, cacheDir.resolve("compandroid"))
                 val validation = ApkValidator.validateUpdate(this, apk, config.packageName)
+                if (
+                    !validation.ok &&
+                    validation.archiveVersionCode != null &&
+                    validation.installedVersionCode != null &&
+                    validation.archiveVersionCode <= validation.installedVersionCode
+                ) {
+                    prefs.rememberArtifactNotNewer(config, latestArtifact, validation.installedVersionCode)
+                }
                 require(validation.ok) { validation.message }
+                prefs.clearArtifactNotNewer()
                 runOnUiThread {
                     val install = ApkInstaller.install(this, apk)
                     status.text = "${validation.message}. ${install.message} ${latestArtifact.headSha.take(7)}"
@@ -372,21 +505,55 @@ class CompandroidSettingsActivity : Activity() {
     }
 
     private fun heading(): TextView = TextView(this).apply {
-        text = "Compandroid Settings"
-        textSize = 24f
-        setPadding(0, 0, 0, 8)
+        text = "Compandroid"
+        textSize = 28f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.rgb(15, 23, 42))
+        setPadding(0, 0, 0, dp(6))
     }
 
     private fun description(): TextView = TextView(this).apply {
-        text = "Scan a desktop token QR or paste a read-only GitHub token, then choose the repository that publishes debug APKs."
+        text = "First, get a GitHub read-only token. Ask your LLM to guide you through creating a fine-grained token with read-only access to the repository you want Compandroid to pull builds from."
         textSize = 14f
-        setPadding(0, 0, 0, 24)
+        setTextColor(Color.rgb(71, 85, 105))
+        setLineSpacing(0f, 1.15f)
+        setPadding(0, 0, 0, dp(20))
     }
 
-    private fun sectionTitle(textValue: String): TextView = TextView(this).apply {
+    private fun tokenPanel(): LinearLayout = panel().apply {
+        addView(eyebrow("Step 1"))
+        addView(title("Add GitHub read token", 18f))
+        addView(body("Paste the token here or scan the QR code generated on your desktop."))
+        addView(token.container, matchWrapParams(top = dp(10)))
+    }
+
+    private fun panel(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(16), dp(16), dp(16), dp(16))
+        background = rounded(Color.WHITE, Color.rgb(226, 232, 240), 1f)
+    }
+
+    private fun eyebrow(textValue: String): TextView = TextView(this).apply {
+        text = textValue.uppercase()
+        textSize = 11f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.rgb(15, 118, 110))
+        setPadding(0, 0, 0, dp(6))
+    }
+
+    private fun title(textValue: String, size: Float): TextView = TextView(this).apply {
+        text = textValue
+        textSize = size
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.rgb(15, 23, 42))
+    }
+
+    private fun body(textValue: String): TextView = TextView(this).apply {
         text = textValue
         textSize = 14f
-        setPadding(0, 8, 0, 4)
+        setTextColor(Color.rgb(71, 85, 105))
+        setLineSpacing(0f, 1.12f)
+        setPadding(0, dp(6), 0, dp(8))
     }
 
     private fun field(
@@ -397,13 +564,19 @@ class CompandroidSettingsActivity : Activity() {
     ): TitledField {
         val title = TextView(this).apply {
             text = label
-            textSize = 12f
-            setPadding(0, 12, 0, 0)
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(51, 65, 85))
+            setPadding(0, dp(10), 0, dp(4))
         }
         val editText = EditText(this).apply {
             hint = label
             setText(value)
             setSingleLine(true)
+            textSize = 15f
+            setPadding(dp(12), 0, dp(12), 0)
+            minHeight = dp(48)
+            background = rounded(Color.WHITE, Color.rgb(203, 213, 225), 1f)
             inputType = if (hidden) {
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             } else {
@@ -415,7 +588,7 @@ class CompandroidSettingsActivity : Activity() {
                 contentDescription = "Scan token QR"
                 setImageResource(android.R.drawable.ic_menu_camera)
                 setBackgroundColor(0x00000000)
-                setPadding(24, 24, 24, 24)
+                setPadding(dp(14), dp(14), dp(14), dp(14))
             }
         } else {
             null
@@ -429,9 +602,9 @@ class CompandroidSettingsActivity : Activity() {
             ))
             actionButton?.let {
                 addView(it, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ))
+                    dp(52),
+                    dp(52)
+                ).apply { leftMargin = dp(8) })
             }
         }
         val container = LinearLayout(this).apply {
@@ -446,6 +619,52 @@ class CompandroidSettingsActivity : Activity() {
         val id = resources.getIdentifier("status_bar_height", "dimen", "android")
         return if (id > 0) resources.getDimensionPixelSize(id) else 0
     }
+
+    private fun Button.stylePrimaryButton() {
+        setAllCaps(false)
+        textSize = 15f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.WHITE)
+        minHeight = dp(48)
+        background = rounded(Color.rgb(15, 118, 110), Color.TRANSPARENT, 0f)
+    }
+
+    private fun Button.styleSecondaryButton() {
+        setAllCaps(false)
+        textSize = 15f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.rgb(15, 23, 42))
+        minHeight = dp(48)
+        background = rounded(Color.rgb(241, 245, 249), Color.rgb(203, 213, 225), 1f)
+    }
+
+    private fun Button.styleTextButton() {
+        setAllCaps(false)
+        textSize = 15f
+        setTextColor(Color.rgb(185, 28, 28))
+        minHeight = dp(44)
+        background = rounded(Color.TRANSPARENT, Color.TRANSPARENT, 0f)
+    }
+
+    private fun rounded(fill: Int, stroke: Int, strokeWidthDp: Float): GradientDrawable =
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(8).toFloat()
+            setColor(fill)
+            if (strokeWidthDp > 0f) {
+                setStroke(dp(strokeWidthDp), stroke)
+            }
+        }
+
+    private fun matchWrapParams(top: Int = 0): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = top }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun dp(value: Float): Int = (value * resources.displayMetrics.density).toInt()
 
     private data class TitledField(
         val label: String,

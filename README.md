@@ -26,6 +26,8 @@ repo.
 - `compan.json` is the machine-readable app/build/update contract.
 - `AGENTS.md` and `CLAUDE.md` are short pointers for coding agents.
 - `.github/workflows/compan-android-apk.yml` builds and uploads APK artifacts.
+- `tools/token-qr.html` is an offline local QR generator for read-only GitHub
+  tokens used by the installed app.
 
 See `templates/android` for files that should be copied into a user app repo.
 

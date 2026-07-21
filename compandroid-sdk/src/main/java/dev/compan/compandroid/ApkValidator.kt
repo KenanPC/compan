@@ -24,14 +24,23 @@ internal object ApkValidator {
         if (archiveVersion <= installedVersion) {
             return ApkValidation(
                 false,
-                "APK versionCode $archiveVersion is not newer than installed $installedVersion"
+                "APK versionCode $archiveVersion is not newer than installed $installedVersion. Push a build with a higher versionCode.",
+                archiveVersionCode = archiveVersion,
+                installedVersionCode = installedVersion
             )
         }
 
-        return ApkValidation(true, "APK validated: versionCode $archiveVersion")
+        return ApkValidation(
+            true,
+            "APK validated: versionCode $archiveVersion",
+            archiveVersionCode = archiveVersion,
+            installedVersionCode = installedVersion
+        )
     }
+
+    fun installedVersionCode(context: Context, packageName: String): Long =
+        context.packageManager.getPackageInfo(packageName, 0).versionCodeCompat()
 
     private fun android.content.pm.PackageInfo.versionCodeCompat(): Long =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) longVersionCode else versionCode.toLong()
 }
-

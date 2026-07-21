@@ -125,6 +125,11 @@ For private repos, the installed app needs read-only GitHub access:
 It does not need write access. Repo writes should be handled by the developer,
 an LLM agent, or GitHub automation outside the installed app.
 
+Any LLM agent expected to use this setup for repo changes needs repo-level
+`content:read-write` and `workflow:read-write` permission. These scopes allow
+the agent to push source updates, bump `versionCode`, and create or edit the
+GitHub Actions workflow that produces APK artifacts.
+
 ## 7. Pull An Update On Device
 
 After GitHub Actions produces a successful APK artifact:
@@ -145,6 +150,12 @@ The recommended token is a fine-grained personal access token scoped to the app
 repo with Metadata, Contents, and Actions read access. Do not bundle this token
 into the APK.
 
+To scan the token without using a hosted QR service, open
+`tools/token-qr.html` from this repo in a browser, paste the read-only token,
+generate the QR code, scan it with Compandroid, then click **Erase Session**.
+The generator is a local static page with no remote scripts and clears the
+token automatically after a short session.
+
 ## 8. Keep Updates Installable
 
 Every APK update must keep:
@@ -154,3 +165,10 @@ Every APK update must keep:
 - a higher `versionCode`
 
 If any of those change, Android may reject the update.
+
+If a developer manually installs a local APK with the same or newer
+`versionCode` than the latest GitHub Actions artifact, Compandroid will reject
+the GitHub APK as not newer. The first pull may still download the artifact so
+Compandroid can inspect its `versionCode`; repeated pulls skip that same
+non-newer artifact until GitHub publishes a different artifact or the installed
+app version changes.

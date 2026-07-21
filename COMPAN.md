@@ -21,6 +21,9 @@ Actions behavior, or Compandroid adoption instructions:
 6. Do not require write GitHub permissions from the installed app.
 7. Treat the installed app as read-only against GitHub: it may read workflow
    runs and artifacts, but repo writes belong to the developer or LLM agent.
+8. Ensure any LLM agent that uses this protocol has repo-level
+   `content:read-write` and `workflow:read-write` permission before asking it
+   to push app changes or edit GitHub Actions workflows.
 
 ## Runtime Update Limits
 
@@ -40,3 +43,14 @@ For private repos, Compandroid should use read-only GitHub access:
 - Actions: read
 
 Write permissions are intentionally out of scope for the installed app.
+
+To make on-device setup quick, use the local QR helper at `tools/token-qr.html`
+for the installed app's read-only token. Open it in a browser, generate the QR
+code locally, scan it from Compandroid settings, then erase the session. Do not
+use an LLM agent write token in this QR helper.
+
+LLM agents or other automation that push source updates, bump version codes, or
+edit `.github/workflows/compan-android-apk.yml` need repo-level
+`content:read-write` and `workflow:read-write` permission. Without both, the
+agent may be able to inspect builds but will not be able to complete the source
+or workflow changes required for Compandroid updates.
