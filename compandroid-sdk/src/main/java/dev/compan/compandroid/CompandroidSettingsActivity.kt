@@ -235,7 +235,7 @@ class CompandroidSettingsActivity : Activity() {
 
         setContentView(ScrollView(this).apply {
             setBackgroundColor(Color.rgb(248, 250, 252))
-            addView(layout, ScrollView.LayoutParams(
+            addView(layout, ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ))
@@ -394,20 +394,28 @@ class CompandroidSettingsActivity : Activity() {
                 repo.editText.setText(selected.name)
                 prefs.owner = selected.owner
                 prefs.repo = selected.name
-                if (branch.editText.text.isBlank()) {
-                    branch.editText.setText("compan-android")
-                    prefs.branch = "compan-android"
-                }
-                if (artifact.editText.text.isBlank()) {
-                    artifact.editText.setText("compan-android-debug-apk")
-                    prefs.artifactName = "compan-android-debug-apk"
-                }
+                fillBlankBuildSettingsFromDefaults()
                 detailsExpanded = false
                 updateGitHubSection()
                 status.text = "Selected ${selected.fullName}. Loading workflows..."
                 loadWorkflows(selected)
             }
             .show()
+    }
+
+    private fun fillBlankBuildSettingsFromDefaults() {
+        if (branch.editText.text.isBlank()) {
+            branch.editText.setText(prefs.branch)
+            prefs.branch = branch.editText.text.toString().trim()
+        }
+        if (workflow.editText.text.isBlank()) {
+            workflow.editText.setText(prefs.workflowFileName)
+            prefs.workflowFileName = workflow.editText.text.toString().trim()
+        }
+        if (artifact.editText.text.isBlank()) {
+            artifact.editText.setText(prefs.artifactName)
+            prefs.artifactName = artifact.editText.text.toString().trim()
+        }
     }
 
     private fun loadWorkflows(repository: GitHubRepository) {
