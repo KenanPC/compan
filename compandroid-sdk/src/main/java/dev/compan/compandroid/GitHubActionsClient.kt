@@ -4,6 +4,7 @@ import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.URLEncoder
 import java.net.URL
 import java.util.zip.ZipInputStream
 
@@ -45,10 +46,53 @@ internal class GitHubActionsClient(private val token: String) {
         return workflows
     }
 
+    fun branches(owner: String, repo: String): List<String> {
+        val branches = mutableListOf<String>()
+        for (page in 1..3) {
+            val pageItems = getJsonArray("https://api.github.com/repos/$owner/$repo/branches?per_page=100&page=$page")
+            for (index in 0 until pageItems.length()) {
+                branches += pageItems.getJSONObject(index).getString("name")
+            }
+            if (pageItems.length() < 100) break
+        }
+        return branches
+    }
+
+    fun artifactNames(owner: String, repo: String, branch: String, workflowFileName: String): List<String> {
+        val names = linkedSetOf<String>()
+        for (page in 1..3) {
+            val runsUrl = "https://api.github.com/repos/$owner/$repo/actions/runs" +
+                "?branch=${branch.urlEncode()}&status=success&per_page=25&page=$page"
+            val runs = getJson(runsUrl).getJSONArray("workflow_runs")
+
+            for (index in 0 until runs.length()) {
+                val run = runs.getJSONObject(index)
+                val workflowPath = run.optString("path")
+                if (workflowFileName.isNotBlank() && workflowPath.isNotBlank() && !workflowPath.endsWith(workflowFileName)) {
+                    continue
+                }
+
+                val artifactsUrl = run.getString("artifacts_url")
+                for (artifactPage in 1..3) {
+                    val artifacts = getJson("$artifactsUrl?per_page=100&page=$artifactPage")
+                        .getJSONArray("artifacts")
+                    for (artifactIndex in 0 until artifacts.length()) {
+                        val artifact = artifacts.getJSONObject(artifactIndex)
+                        if (!artifact.getBoolean("expired")) {
+                            names += artifact.getString("name")
+                        }
+                    }
+                    if (artifacts.length() < 100) break
+                }
+            }
+        }
+        return names.toList()
+    }
+
     fun latestSuccessfulArtifact(config: CompandroidConfig): GitHubArtifact? {
         for (page in 1..3) {
             val runsUrl = "https://api.github.com/repos/${config.owner}/${config.repo}/actions/runs" +
-                "?branch=${config.branch}&status=success&per_page=25&page=$page"
+                "?branch=${config.branch.urlEncode()}&status=success&per_page=25&page=$page"
             val runs = getJson(runsUrl).getJSONArray("workflow_runs")
 
             for (index in 0 until runs.length()) {
@@ -139,4 +183,6 @@ internal class GitHubActionsClient(private val token: String) {
             else -> "GitHub request failed: HTTP $responseCode $body"
         }
     }
+
+    private fun String.urlEncode(): String = URLEncoder.encode(this, Charsets.UTF_8.name())
 }
