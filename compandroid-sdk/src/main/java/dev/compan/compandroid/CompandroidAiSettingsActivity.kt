@@ -133,7 +133,7 @@ class CompandroidAiSettingsActivity : Activity() {
         file.parentFile?.mkdirs()
         val logs = runCatching {
             val command = if (android.os.Build.VERSION.SDK_INT >= 24) {
-                arrayOf("logcat", "-d", "--pid=$pid", "-t", "500")
+                arrayOf("logcat", "-d", "--pid=${android.os.Process.myPid()}", "-t", "500")
             } else {
                 arrayOf("logcat", "-d", "-t", "500")
             }
