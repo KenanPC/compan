@@ -14,7 +14,7 @@
   "compandroid": {
     "sdkModule": ":compandroid-sdk",
     "artifactId": "compandroid-sdk",
-    "currentVersion": "0.1.0",
+    "currentVersion": "0.2.0",
     "templatePath": "templates/android",
     "adoptionGuide": "QUICKSTART.md"
   },

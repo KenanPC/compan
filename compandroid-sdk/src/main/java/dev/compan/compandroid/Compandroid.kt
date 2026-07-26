@@ -2,21 +2,29 @@ package dev.compan.compandroid
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.hardware.SensorManager
+import android.os.Build
+import android.provider.MediaStore
 import android.widget.CheckBox
+import java.lang.ref.WeakReference
 
 object Compandroid {
     private var shakeDetector: ShakeDetector? = null
     private var launchNoticeShownThisProcess = false
+    private var hostActivity = WeakReference<Activity>(null)
 
     fun install(activity: Activity): Boolean {
+        hostActivity = WeakReference(activity)
         showLaunchNoticeIfNeeded(activity)
         val sensorManager = activity.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         shakeDetector?.stop()
         shakeDetector = ShakeDetector(sensorManager) {
-            activity.startActivity(Intent(activity, CompandroidSettingsActivity::class.java))
+            activity.startActivity(Intent(activity, CompandroidLandingActivity::class.java))
         }
         return shakeDetector?.start() == true
     }
@@ -24,6 +32,38 @@ object Compandroid {
     fun uninstall() {
         shakeDetector?.stop()
         shakeDetector = null
+        hostActivity.clear()
+    }
+
+    internal fun captureHostScreenshot(context: Context): Result<String> = runCatching {
+        val activity = hostActivity.get() ?: error("The previous app screen is no longer available.")
+        val root = activity.window.decorView.rootView
+        require(root.width > 0 && root.height > 0) { "The previous app screen is not ready." }
+
+        val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+        root.draw(Canvas(bitmap))
+
+        val name = "compan-${System.currentTimeMillis()}.png"
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Compan")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+        }
+        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: error("Could not create screenshot file.")
+        context.contentResolver.openOutputStream(uri)?.use { output ->
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
+        } ?: error("Could not write screenshot file.")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            context.contentResolver.update(uri, ContentValues().apply {
+                put(MediaStore.Images.Media.IS_PENDING, 0)
+            }, null, null)
+        }
+        bitmap.recycle()
+        name
     }
 
     private fun showLaunchNoticeIfNeeded(activity: Activity) {
