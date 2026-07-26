@@ -95,7 +95,7 @@ object Compandroid {
         }
     }
 
-    private fun pendingScreenshotFile(context: Context): File =
+    internal fun pendingScreenshotFile(context: Context): File =
         context.cacheDir.resolve("compandroid/pending-host-screen.png")
 
     private fun showLaunchNoticeIfNeeded(activity: Activity) {
