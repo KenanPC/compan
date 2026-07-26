@@ -4,6 +4,11 @@
 
     <application>
         <activity
+            android:name=".CompandroidLandingActivity"
+            android:exported="false"
+            android:theme="@style/CompandroidTheme" />
+
+        <activity
             android:name=".CompandroidSettingsActivity"
             android:exported="false"
             android:theme="@style/CompandroidTheme" />
@@ -19,4 +24,3 @@
         </provider>
     </application>
 </manifest>
-
