@@ -29,7 +29,7 @@ class CompandroidLandingActivity : Activity() {
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(0, dp(12), 0, 0)
             text = if (Compandroid.hasPendingHostScreenshot(this@CompandroidLandingActivity)) {
-                "The screen shown before CompanDROID opened is ready to save."
+                "The screen shown before CompanDROID opened is ready to save or share."
             } else {
                 "No screenshot is ready. Return to your app and shake the device again to capture it before this interface opens."
             }
@@ -40,6 +40,14 @@ class CompandroidLandingActivity : Activity() {
             styleButton(Color.rgb(15, 130, 116), Color.WHITE)
             setOnClickListener {
                 startActivity(Intent(this@CompandroidLandingActivity, CompandroidSettingsActivity::class.java))
+            }
+        }
+
+        val aiButton = Button(this).apply {
+            text = "Open AI settings\nChoose provider, project, and sharing"
+            styleButton(Color.rgb(79, 70, 229), Color.WHITE)
+            setOnClickListener {
+                startActivity(Intent(this@CompandroidLandingActivity, CompandroidAiSettingsActivity::class.java))
             }
         }
 
@@ -87,6 +95,11 @@ class CompandroidLandingActivity : Activity() {
                 description = "Configure GitHub integration and manage your repository.",
                 action = githubButton
             ))
+            addView(card(
+                title = "AI Settings",
+                description = "Choose your AI provider and development project, then share screenshots or logs into a new chat.",
+                action = aiButton
+            ), margin(top = dp(16)))
             addView(card(
                 title = "Capture App Screenshot",
                 description = "Save the app screen captured at the moment you shook the device, before CompanDROID opened.",
