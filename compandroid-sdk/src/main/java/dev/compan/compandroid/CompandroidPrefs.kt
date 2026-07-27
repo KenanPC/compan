@@ -30,6 +30,14 @@ internal class CompandroidPrefs(context: Context) {
         get() = prefs.getString("workflowFileName", null) ?: bundledConfig.workflowFileName
         set(value) = prefs.edit().putString("workflowFileName", value).apply()
 
+    var aiProvider: String
+        get() = prefs.getString("aiProvider", "ChatGPT") ?: "ChatGPT"
+        set(value) = prefs.edit().putString("aiProvider", value).apply()
+
+    var aiProjectName: String
+        get() = prefs.getString("aiProjectName", "") ?: ""
+        set(value) = prefs.edit().putString("aiProjectName", value).apply()
+
     var hideLaunchNotice: Boolean
         get() = prefs.getBoolean("hideLaunchNotice", false)
         set(value) = prefs.edit().putBoolean("hideLaunchNotice", value).apply()

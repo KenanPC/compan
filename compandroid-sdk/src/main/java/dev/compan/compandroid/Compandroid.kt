@@ -11,6 +11,7 @@ import android.hardware.SensorManager
 import android.os.Build
 import android.provider.MediaStore
 import android.widget.CheckBox
+import java.io.File
 import java.lang.ref.WeakReference
 
 object Compandroid {
@@ -24,6 +25,7 @@ object Compandroid {
         val sensorManager = activity.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         shakeDetector?.stop()
         shakeDetector = ShakeDetector(sensorManager) {
+            captureHostScreenToCache(activity)
             activity.startActivity(Intent(activity, CompandroidLandingActivity::class.java))
         }
         return shakeDetector?.start() == true
@@ -35,13 +37,14 @@ object Compandroid {
         hostActivity.clear()
     }
 
-    internal fun captureHostScreenshot(context: Context): Result<String> = runCatching {
-        val activity = hostActivity.get() ?: error("The previous app screen is no longer available.")
-        val root = activity.window.decorView.rootView
-        require(root.width > 0 && root.height > 0) { "The previous app screen is not ready." }
+    internal fun hasPendingHostScreenshot(context: Context): Boolean =
+        pendingScreenshotFile(context).isFile
 
-        val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
-        root.draw(Canvas(bitmap))
+    internal fun captureHostScreenshot(context: Context): Result<String> = runCatching {
+        val pending = pendingScreenshotFile(context)
+        require(pending.isFile) {
+            "No screenshot is ready. Return to your app and shake the device again to capture the screen before CompanDROID opens."
+        }
 
         val name = "compan-${System.currentTimeMillis()}.png"
         val values = ContentValues().apply {
@@ -54,17 +57,46 @@ object Compandroid {
         }
         val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
             ?: error("Could not create screenshot file.")
-        context.contentResolver.openOutputStream(uri)?.use { output ->
-            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
-        } ?: error("Could not write screenshot file.")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            context.contentResolver.update(uri, ContentValues().apply {
-                put(MediaStore.Images.Media.IS_PENDING, 0)
-            }, null, null)
+
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                pending.inputStream().use { input -> input.copyTo(output) }
+            } ?: error("Could not write screenshot file.")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                context.contentResolver.update(uri, ContentValues().apply {
+                    put(MediaStore.Images.Media.IS_PENDING, 0)
+                }, null, null)
+            }
+            pending.delete()
+            name
+        } catch (error: Throwable) {
+            context.contentResolver.delete(uri, null, null)
+            throw error
         }
-        bitmap.recycle()
-        name
     }
+
+    private fun captureHostScreenToCache(activity: Activity): Result<File> = runCatching {
+        val root = activity.window.decorView.rootView
+        require(root.width > 0 && root.height > 0) { "The app screen is not ready." }
+
+        val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+        try {
+            root.draw(Canvas(bitmap))
+            val file = pendingScreenshotFile(activity)
+            file.parentFile?.mkdirs()
+            file.outputStream().use { output ->
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                    "Could not prepare screenshot."
+                }
+            }
+            file
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    internal fun pendingScreenshotFile(context: Context): File =
+        context.cacheDir.resolve("compandroid/pending-host-screen.png")
 
     private fun showLaunchNoticeIfNeeded(activity: Activity) {
         if (launchNoticeShownThisProcess || activity.isFinishing || activity.isDestroyed) return

@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
@@ -29,6 +28,11 @@ class CompandroidLandingActivity : Activity() {
             textSize = 14f
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(0, dp(12), 0, 0)
+            text = if (Compandroid.hasPendingHostScreenshot(this@CompandroidLandingActivity)) {
+                "The screen shown before CompanDROID opened is ready to save or share."
+            } else {
+                "No screenshot is ready. Return to your app and shake the device again to capture it before this interface opens."
+            }
         }
 
         val githubButton = Button(this).apply {
@@ -39,16 +43,28 @@ class CompandroidLandingActivity : Activity() {
             }
         }
 
+        val aiButton = Button(this).apply {
+            text = "Open AI settings\nChoose provider, project, and sharing"
+            styleButton(Color.rgb(79, 70, 229), Color.WHITE)
+            setOnClickListener {
+                startActivity(Intent(this@CompandroidLandingActivity, CompandroidAiSettingsActivity::class.java))
+            }
+        }
+
         val captureButton = Button(this).apply {
-            text = "Capture screenshot\nReturns to the previous screen"
+            text = "Save captured screenshot"
             styleOutlinedButton(Color.rgb(194, 65, 12))
+            isEnabled = Compandroid.hasPendingHostScreenshot(this@CompandroidLandingActivity)
             setOnClickListener {
                 Compandroid.captureHostScreenshot(this@CompandroidLandingActivity)
                     .onSuccess { name ->
                         Toast.makeText(this@CompandroidLandingActivity, "Screenshot saved: $name", Toast.LENGTH_LONG).show()
                         finish()
                     }
-                    .onFailure { error -> status.text = error.message ?: "Screenshot failed" }
+                    .onFailure { error ->
+                        status.text = error.message ?: "Screenshot failed"
+                        isEnabled = Compandroid.hasPendingHostScreenshot(this@CompandroidLandingActivity)
+                    }
             }
         }
 
@@ -67,7 +83,12 @@ class CompandroidLandingActivity : Activity() {
                 textSize = 30f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(15, 23, 42))
-                setPadding(0, 0, 0, dp(28))
+            })
+            addView(TextView(this@CompandroidLandingActivity).apply {
+                text = "A dev tool for building apps on Android."
+                textSize = 16f
+                setTextColor(Color.rgb(71, 85, 105))
+                setPadding(0, dp(6), 0, dp(28))
             })
             addView(card(
                 title = "GitHub Settings",
@@ -75,31 +96,38 @@ class CompandroidLandingActivity : Activity() {
                 action = githubButton
             ))
             addView(card(
+                title = "AI Settings",
+                description = "Choose your AI provider and development project, then share screenshots or logs into a new chat.",
+                action = aiButton
+            ), margin(top = dp(16)))
+            addView(card(
                 title = "Capture App Screenshot",
-                description = "Capture the current screen of your app to include in your workflow.",
+                description = "Save the app screen captured at the moment you shook the device, before CompanDROID opened.",
                 action = captureButton
             ), margin(top = dp(16)))
             addView(status)
-            addView(LinearLayout(this@CompandroidLandingActivity).apply {
-                gravity = Gravity.BOTTOM
-                addView(pullButton, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ))
-            }, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            ).apply { topMargin = dp(24) })
+            addView(pullButton, margin(top = dp(24)))
         }
 
-        setContentView(ScrollView(this).apply {
+        val scroll = ScrollView(this).apply {
             isFillViewport = true
+            clipToPadding = false
             addView(content, ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+                ViewGroup.LayoutParams.WRAP_CONTENT
             ))
-        })
+            setOnApplyWindowInsetsListener { view, insets ->
+                view.setPadding(
+                    view.paddingLeft,
+                    view.paddingTop,
+                    view.paddingRight,
+                    dp(24) + insets.systemWindowInsetBottom
+                )
+                insets
+            }
+        }
+        setContentView(scroll)
+        scroll.requestApplyInsets()
         updatePullState()
     }
 
