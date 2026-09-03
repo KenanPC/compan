@@ -144,6 +144,7 @@ class CompandroidLandingActivity : Activity() {
     private fun pullLatest() {
         pullButton.isEnabled = false
         status.text = "Checking GitHub Actions..."
+        // Network and APK work stay off the main thread.
         thread {
             runCatching {
                 val config = prefs.config(packageName)
