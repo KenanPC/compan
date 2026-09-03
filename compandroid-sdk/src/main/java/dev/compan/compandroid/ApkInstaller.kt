@@ -10,6 +10,7 @@ import java.io.File
 
 internal object ApkInstaller {
     fun install(context: Context, apk: File): InstallResult {
+        // Android 8+ requires per-source approval before sideloading an APK.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
                 .setData(Uri.parse("package:${context.packageName}"))
