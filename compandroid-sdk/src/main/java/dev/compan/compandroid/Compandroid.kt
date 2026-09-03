@@ -17,6 +17,7 @@ import java.lang.ref.WeakReference
 object Compandroid {
     private var shakeDetector: ShakeDetector? = null
     private var launchNoticeShownThisProcess = false
+    // Avoid retaining the host Activity after Compandroid is uninstalled.
     private var hostActivity = WeakReference<Activity>(null)
 
     fun install(activity: Activity): Boolean {
