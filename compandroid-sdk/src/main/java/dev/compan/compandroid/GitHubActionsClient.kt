@@ -11,6 +11,7 @@ import java.util.zip.ZipInputStream
 internal class GitHubActionsClient(private val token: String) {
     fun repositories(): List<GitHubRepository> {
         val repositories = mutableListOf<GitHubRepository>()
+        // Keep startup requests bounded while still covering recently active accounts.
         for (page in 1..3) {
             val pageItems = getJsonArray("https://api.github.com/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&sort=updated&per_page=100&page=$page")
             for (index in 0 until pageItems.length()) {
