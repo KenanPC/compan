@@ -162,6 +162,7 @@ class CompandroidAiSettingsActivity : Activity() {
             "Claude" -> "com.anthropic.claude"
             else -> null
         }
+        // Prefer direct handoff when the selected AI app is installed.
         if (targetPackage != null && packageManager.getLaunchIntentForPackage(targetPackage) != null) {
             send.setPackage(targetPackage)
             startActivity(send)
