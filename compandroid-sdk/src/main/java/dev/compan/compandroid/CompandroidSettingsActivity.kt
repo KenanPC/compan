@@ -372,6 +372,7 @@ class CompandroidSettingsActivity : Activity() {
 
     private fun parseGitHubToken(rawValue: String): String {
         val trimmed = rawValue.trim()
+        // Accept raw tokens first so copied values work without extra formatting.
         if (
             trimmed.startsWith("ghp_") ||
             trimmed.startsWith("github_pat_") ||
