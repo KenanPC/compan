@@ -14,6 +14,7 @@ internal object CompandroidConfigLoader {
             val app = root.optJSONObject("app")
             val github = root.optJSONObject("github")
             val repoSlug = github?.optString("repository").orEmpty()
+            // Support both repository: "owner/name" and split owner/repo fields.
             val ownerRepo = repoSlug.split("/", limit = 2)
 
             CompandroidConfig(
