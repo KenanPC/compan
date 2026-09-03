@@ -34,6 +34,7 @@ internal class ShakeDetector(
         val force = sqrt(x * x + y * y + z * z)
         val now = System.currentTimeMillis()
 
+        // Debounce strong motion so one shake opens Compandroid once.
         if (force > 27f && now - lastShakeAt > 1500L) {
             lastShakeAt = now
             onShake()
