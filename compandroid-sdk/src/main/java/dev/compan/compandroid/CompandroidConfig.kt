@@ -9,6 +9,7 @@ data class CompandroidConfig(
     val packageName: String
 ) {
     companion object {
+        // Defaults match the generated Android workflow and artifact names.
         fun default(packageName: String = ""): CompandroidConfig = CompandroidConfig(
             owner = "",
             repo = "",
