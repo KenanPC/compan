@@ -47,6 +47,7 @@ internal class CompandroidPrefs(context: Context) {
         artifact: GitHubArtifact,
         installedVersionCode: Long
     ): Boolean =
+        // Match the full artifact identity before suppressing another version warning.
         prefs.getString("notNewerOwner", "") == config.owner &&
             prefs.getString("notNewerRepo", "") == config.repo &&
             prefs.getString("notNewerBranch", "") == config.branch &&
